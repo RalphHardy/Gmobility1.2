@@ -4,7 +4,7 @@
 // The list of which env maps to which file can be found in `.angular-cli.json`.
 export const environment = {
   production: false,
-  AppVersion: "1.2.5.22", // /Oct 26 .22 /Oct 25 .21 Oct 23 .20  Oct 10 .19 Oct 4 .18 Oct 3 .17 Sept 29
+  AppVersion: "1.2.5.23",// Nov 1 .23  // Oct 26 .22 /Oct 25 .21 Oct 23 .20  Oct 10 .19 Oct 4 .18 Oct 3 .17 Sept 29
   ApiVersion: "1.0.0.42",
   EntDbVersion: 6.8002,
   //GmobilityUrl: "http://remote1.circlegsoftware.com/api/",
