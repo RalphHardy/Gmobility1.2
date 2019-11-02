@@ -1,0 +1,30 @@
+ngOnInit:
+If connected-to-server
+    applicVarsSvc.setSiteAccessInfo(true);
+    1. Get LSO-SiteAccessInfo
+    2. Get LSO-Device-Data
+    3. Get LSO-ApplicVarsData
+    4. loginSubSvc.setNewSiteAccessInfo(this.siteAccessInfo);
+    // this.needSiteAccess = (!newSiteAccessInfo || newSiteAccessInfo.siteAbbrevName == '');
+        if needSiteAccess
+            if connected-to-server
+                Open-Site-Page
+        if not needSiteAccess
+            applicVarsSvc.getDevice_ApplicDataFromLocalStorage
+            //  1. Get LSO-Device-Data
+                2. Get LSO-ApplicVarsData
+                3. this.lsoRequestsSvc.setLSOnames(devData.loginUserId)
+
+
+Notes:
+1. loginSubSvc.setNewSiteAccessInfo(this.siteAccessInfo) is invoked by:
+    a. login.ts/ngOnInit (see above)
+    b. applic-vars.svc.ts/getFirebaseAccessSiteInfo()
+    c. applic-vars.svc.ts/getServerAccessSiteInfo()
+    e. applic-vars.svc.ts/clearLocalStorage()
+    f. applic-vars.svc.ts/setSiteAccessInfo() ***CAUTION: Possible endless loop?????
+
+
+Search tokens:
+clearLocalStorage
+setNewSiteAccessInfo

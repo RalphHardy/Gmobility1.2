@@ -1,0 +1,80 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button  (click)="goBack()"> 
+        <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+      </ion-button>                 
+    </ion-buttons>
+    <ion-buttons slot="primary">
+      <ion-button (click)="selectMenuItem()">
+        <ion-icon  slot="icon-only" name="menu"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+
+<ion-content padding>
+
+
+  <form [formGroup]="pageFormGroup" (ngSubmit)="presentAlert()">
+
+    <!-- Input item #1 -->
+    <ion-item>
+      <ion-label fixed>Site Code:</ion-label>
+    <ion-input
+        (ionChange)="setUpperCase('siteCode')" 
+        type="text"
+        formControlName="siteCode"></ion-input>
+    </ion-item>
+
+  <!-- Input item #1 -->
+  <ion-item>
+    <ion-label fixed>Access Key:</ion-label>
+  <ion-input 
+      (ionChange)="setUpperCase('accessKey')" 
+      type="text"
+      formControlName="accessKey"></ion-input>
+  </ion-item>
+
+  <div *ngIf="siteAccessChanged">
+      <hr>
+      <ion-grid>
+        <ion-row>
+          <ion-col align-self-start>              
+          <ion-button start color="danger"   shape="round" expand="full"
+            
+            (click)="closePage()">
+            Cancel
+          </ion-button>
+        </ion-col>
+        <ion-col align-self-end>            
+          <ion-button end color="success"  shape="round" expand="full"
+            type="submit"
+            [disabled]="!pageFormGroup.valid">
+            Accept
+          </ion-button>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
+  </form>
+  <!-- DISPLAY ONLY -->
+<ion-item>
+  <ion-row>
+    <span class="desc-style"> URL: {{urlString}} </span>
+  </ion-row>
+</ion-item>
+<ion-item>
+  <ion-row>
+    <span class="desc-style"> Sync DB Name: {{syncDbName}} </span>
+  </ion-row>
+</ion-item>
+<ion-item>
+  <ion-row>
+    <span class="desc-style"> API Version No.: {{apiVersion}} </span>
+  </ion-row>
+</ion-item>
+  
+</ion-content>

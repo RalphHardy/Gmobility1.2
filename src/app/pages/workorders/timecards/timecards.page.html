@@ -1,0 +1,82 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+      <ion-buttons slot="primary">
+        <ion-button (click)="selectMenuItem()">
+          <ion-icon  slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+
+<ion-content>
+    <ion-item >
+      <ion-grid fixed>
+          <ion-row>
+            <ion-col size="4">
+              <b>Labor Line:</b> {{ currLL.MobLineId }}
+            </ion-col>
+          </ion-row>   
+          <ion-row>
+             <i>{{ laborDesc }}</i> 
+          </ion-row> 
+          <ion-row>
+            <ion-col class="fld-lbl" size="3">
+                Trade:
+            </ion-col>
+            <ion-col class="val-lbl" size="9">
+                {{currLL.TradeDesc}}
+            </ion-col>
+          </ion-row>    
+          <ion-row>
+            <ion-col class="fld-lbl" size="3">
+                Acc.Hours:
+            </ion-col>
+            <ion-col class="val-lbl" size="9">
+                {{currLL.AccumTime}} (worked to date)
+            </ion-col>
+          </ion-row>  
+        </ion-grid>
+    </ion-item>
+    <ion-button expand="full" color="warning"
+      (click)="onAddEditTimeCard(0)">
+      Add New Time Card
+      <ion-icon slot="end" name="add"></ion-icon>
+    </ion-button>
+ 
+    <ion-card >
+      
+    <ion-list >
+        <div class="sub-title">
+          Time Cards for Labor Line {{ currLL.MobLineId }}
+        </div>
+      <ion-item *ngFor="let timecard of currLL.WoActualTimeLines"
+      (click)="onAddEditTimeCard(timecard.MobLineId)">        
+      
+      <ion-grid fixed >
+        <ion-row class="white-bkgd">
+          <ion-col class="fld-lbl" size="3">
+            Hrs: {{ timecard.Hours }} 
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ timecard.EmpName }}
+          </ion-col>
+        </ion-row>    
+        <ion-row class="white-bkgd">
+          <ion-col class="fld-lbl" size="3">
+            Date: 
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ utilitiesSvc.getSmallDateFromDTstr(timecard.WorkDate) }}
+          </ion-col>
+        </ion-row> 
+      </ion-grid> 
+    </ion-item>
+      </ion-list>
+      </ion-card>
+
+</ion-content>

@@ -1,0 +1,195 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+      <ion-buttons slot="primary"
+        *ngIf="!formHasChanged">
+        <ion-button (click)="selectMenuItem()">
+          <ion-icon  slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+      
+  <!-- Input Catalog Item (SkuCode) -->
+
+  <ion-toolbar>
+    <ion-buttons slot="start"> 
+      <ion-button expand="block" color="warning" fill="solid"
+      (click)="onSelectCatItem()">
+      Select Catalog Item
+      </ion-button>
+    </ion-buttons>
+    <ion-buttons slot="end">
+      <ion-button expand="block" color="success" fill="solid"
+      (click)="onScanItem()">
+      Scan Barcode
+      </ion-button>
+  </ion-buttons>
+</ion-toolbar>
+  <ion-item>
+      <ion-label fixed><b>Catalog Item:</b></ion-label>
+      <ion-input 
+          (ionChange)="setUpperCase('skuCode')" 
+          type="text"
+          formControlName="skuCode"></ion-input>
+  </ion-item>
+  <div class="desc-div">
+    {{ addEditML.SkuDescription }}
+  </div>  
+
+  <ion-item *ngIf="addEditML.EstQty>0 || addEditML.ActualQty>0 ">
+    <ion-grid fixed>
+      <ion-row>
+        <ion-col size="7">
+          Enterprise Qty Estd: <b>{{ addEditML.EstQty }}</b>
+        </ion-col>
+        <ion-col size="5">
+          Qty Issued: <b>{{ addEditML.ActualQty }}</b>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </ion-item>
+
+  <!-- Input ESTIMATED HOURS  -->
+  <ion-item>
+      <ion-label position="fixed" ><b>Qty Picked Up:</b></ion-label>
+      <ion-input
+          type="number"
+          formControlName="qtyPickedUp"></ion-input>
+  </ion-item>
+
+  <ion-item>
+      <ion-label position="fixed" ><b>Qty Used:</b></ion-label>
+      <ion-input
+          type="number"
+          formControlName="qtyUsed"></ion-input>
+  </ion-item>
+
+  <!-- Input DATE USED -->  
+  <ion-button expand="full" color="warning" class="narrower-button"
+  (click)="onClearDate()">
+    Clear Date Used
+  </ion-button> 
+  <ion-item>
+    <ion-label fixed> <b>Date Used:</b></ion-label>
+    <ion-datetime  formControlName="usageDate" 
+      display-format="DD-MMM-YYYY" >
+    </ion-datetime>
+  </ion-item>
+
+  <!-- Input EMPLOYEE-->
+  <ion-button expand="full" color="warning"
+  (click)="onSelectEmployee()">
+  Press to Select Employee
+  </ion-button>
+  <ion-item>
+      <ion-label fixed><b>Emp #</b></ion-label>
+      <ion-input 
+          (ionChange)="setUpperCase('empNum')" 
+          type="text"
+          formControlName="empNum"></ion-input>
+  </ion-item>
+  <div class="desc-div">
+      {{ addEditML.EmpName }}
+  </div>  
+
+<!-- INVENTORY ACQ METHOD -->
+    <ion-item>
+      <ion-label position="fixed" ><b>Acq. method:</b></ion-label>
+      <ion-select formControlName="acqMethodCode" class="full-width-select">
+        <ion-select-option  
+        *ngFor="let acqMethod of acqMethods"
+        [value]="acqMethod.code">
+        {{ acqMethod.code }}-{{ acqMethod.desc }} </ion-select-option>
+      </ion-select>
+    </ion-item>  
+
+    <ion-item *ngIf="isInventory">
+      <ion-label position="fixed" ><b>Warehouse:</b></ion-label>
+      <ion-select formControlName="warehouse" class="full-width-select">
+        <ion-select-option  
+        *ngFor="let whse of masterWarehouses"
+        [value]="whse.Warehouse">
+        {{ whse.Warehouse }}</ion-select-option>
+      </ion-select>
+    </ion-item>  
+
+    <ion-item *ngIf="isInventory">
+        <ion-label position="fixed" ><b>Bin:</b></ion-label>
+        <ion-select formControlName="binNum" class="full-width-select">
+          <ion-select-option  
+          *ngFor="let bin of binNumsDropDownList"
+          [value]="bin">
+          {{ bin }}</ion-select-option>
+        </ion-select>
+      </ion-item>  
+
+<!-- P/O PURCHASE ACQ METHOD -->
+    <ion-item *ngIf="isPoPurchase">
+        <ion-label position="fixed" > <b>Acq Info (PO#):</b> </ion-label>
+        <ion-input formControlName="acqInfo" type="text">
+        </ion-input>            
+      </ion-item>  
+
+
+<!-- PURCHASE ACQ METHOD -->
+    <ion-item *ngIf="!isInventory">
+      <ion-label position="fixed" ><b>Supplier:</b></ion-label>
+      <ion-select formControlName="supplierCode" class="full-width-select">
+        <ion-select-option 
+        *ngFor="let item of suppliersDropDownList"
+        [value]="item.SupplierCode">
+        {{ item.SupplierCode }} - {{ item.SupplierName }}</ion-select-option>
+      </ion-select>
+    </ion-item>  
+  
+    <!-- Input UNIT PRICE -->
+  <ion-item *ngIf="!isInventory">
+      <ion-label position="fixed" ><b>Unit Price:</b></ion-label>
+      <ion-input
+          type="number"
+          formControlName="unitPrice"></ion-input>
+  </ion-item>
+
+  <ion-item *ngIf="!isInventory">
+      <ion-label position="fixed" ><b>Unit of Meas:</b></ion-label>
+      <ion-select formControlName="unitOfMeasure">
+      <ion-select-option
+          *ngFor="let uom of masterUoM"
+          [value]="unitOfMeasure">
+          {{uom.UomCode}}
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+
+  <div>
+    <hr>
+    <ion-grid>
+      <ion-row>
+        <ion-col align-self-start>              
+          <ion-button start color="danger" shape="round" expand="full"
+          *ngIf="formHasChanged"
+          (click)="closePage()">
+            Cancel
+          </ion-button>
+        </ion-col>
+        <ion-col align-self-end>            
+          <ion-button end color="success"  shape="round" expand="full"
+          *ngIf="formHasChanged"
+          type="submit"
+          [disabled]="!pageFormGroup.valid">
+            {{ submitBtnLabel }}
+          </ion-button>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </div>
+</form>
+
+</ion-content>

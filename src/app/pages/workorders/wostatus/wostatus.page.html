@@ -1,0 +1,110 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button  (click)="goBack()"> 
+        <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+      </ion-button>                 
+    </ion-buttons>
+    <ion-buttons slot="primary">
+      <ion-button *ngIf="!httpRequestsSvc.connected2Server"
+        (click)="connectionSvc.checkIfConnected2Server(true)">
+        <ion-icon  slot="icon-only" name="pulse" color="danger" ></ion-icon>
+      </ion-button>  
+    </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item class="desc-style">
+      {{ currWO.WoDesc}}
+  </ion-item>
+  <div *ngIf="currWO.UrgentFlag" class="urgent-item" >
+    Urgent Work Order
+  </div>
+  <ion-list>
+    <ion-item      
+        (click)="onEditWo(currWO.WoNumber)"> <!-- WO Edit-->
+      <ion-grid fixed>
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+          Eqp/Asset:
+          </ion-col>
+          <ion-col class="val-lbl" size="8">
+              {{ currWO.EquipNumber }}
+          </ion-col> 
+        </ion-row>       
+        <ion-row>
+            <ion-col class="desc-style">{{ currWO.EquipDesc }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+              Mach State:
+          </ion-col>
+          <ion-col class="val-lbl" size="8">
+            {{ currWO.MachineStateDesc }}
+          </ion-col>
+        </ion-row>    
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+              Status:
+          </ion-col>
+          <ion-col class="val-lbl" size="4">
+              {{ currWO.WoMobStatusDesc }}
+          </ion-col>
+          <ion-col size="4">
+              <b>Prty:</b> 
+              {{ currWO.PriorityId }}
+          </ion-col>
+        </ion-row>    
+      </ion-grid>
+    </ion-item>
+  </ion-list>  
+    <ion-item *ngIf="!(statusOpts[5] && currWO.UrgentFlag)">
+      <h4>
+        <b>Change Work Order Status To:</b> 
+      </h4>
+    </ion-item>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="statusOpts[1]"
+    (click)="setWoStatus(1)">
+    Assign to User
+    </ion-button>
+    <ion-item *ngIf="statusOpts[1]">        
+    </ion-item>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="statusOpts[2]"
+    (click)="setWoStatus(2)">
+    Assign to Pool
+    </ion-button>
+    <ion-item *ngIf="statusOpts[2]">        
+    </ion-item>
+
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="statusOpts[3]"
+    (click)="setWoStatus(3)">
+    Work in Process
+    </ion-button>
+    <ion-item *ngIf="statusOpts[3]">        
+    </ion-item>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="statusOpts[4]"
+    (click)="setWoStatus(4)">
+    Release - Complete
+    </ion-button>
+    <ion-item *ngIf="statusOpts[4]">        
+    </ion-item>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="(statusOpts[5] && !currWO.UrgentFlag)"
+    (click)="setWoStatus(5)">
+    Release - Incomplete
+    </ion-button>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button" *ngIf="(statusOpts[5] && currWO.UrgentFlag)"
+    (click)="setWoStatus(5)">
+    SUBMIT TO SERVER
+    </ion-button>
+
+
+
+</ion-content>

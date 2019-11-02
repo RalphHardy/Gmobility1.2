@@ -1,0 +1,42 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>under-construction</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content padding>
+
+  <ion-toolbar color="primary" (click)="onLaborLines()">
+      <ion-buttons slot="primary">
+        <ion-button 
+        (click)="onAddEditLaborLine(0, false)">
+          <ion-icon slot="icon-only" name="add"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+      <ion-title class="title">Labor Lines</ion-title>      
+    </ion-toolbar>  
+          
+  <ion-item> <!-- WO Header-->
+    <ion-grid fixed>
+      <ion-row>
+        <ion-col class="fld-lbl" size="4">
+        </ion-col>
+        <ion-col class="val-lbl" size="8"
+        ></ion-col>
+      </ion-row>    
+      <ion-row>
+        <ion-col class="fld-lbl" size="4">
+        </ion-col>
+        <ion-col class="val-lbl" size="8">
+        </ion-col>
+      </ion-row>    
+      <ion-row>
+        <ion-col class="fld-lbl" size="4">
+        </ion-col>
+        <ion-col class="val-lbl" size="8">
+        </ion-col>
+      </ion-row>    
+    </ion-grid>
+  </ion-item>
+
+</ion-content>

@@ -1,0 +1,20 @@
+<ion-app>
+  <ion-menu type="overlay">
+    <ion-header>
+        <ion-toolbar>
+          <ion-title>Side Menu</ion-title>
+        </ion-toolbar>
+    </ion-header>
+    <ion-content padding>
+      <ion-list>
+        <ion-menu-toggle *ngFor="let p of sideMenuPages">
+          <ion-item [routerLink]="p.url" [routerDirection]="'root'">
+            <ion-icon slot="start" [name]="p.icon"></ion-icon>
+            <ion-label>{{p.title}} {{titleSuffix(p.title)}}</ion-label>
+          </ion-item>
+        </ion-menu-toggle>
+      </ion-list>
+    </ion-content>
+  </ion-menu>
+  <ion-router-outlet main></ion-router-outlet>
+</ion-app>

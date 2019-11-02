@@ -1,0 +1,36 @@
+.register-button{
+	color: #004d66;
+	width: 100%;
+	border-radius: 20px;
+	height:45px;
+}
+
+.login-button{
+	width: 100%;
+	border-radius: 20px;
+	height:45px;
+	background-color: #004d66;
+	text-align: center; 
+}
+
+.input-item {
+	background: rgba(255, 255, 255, .85);
+	border-radius: 20px;
+	border: 1px solid;
+	margin-bottom: 10px;
+    font-size: large;
+	color: #888;
+}
+
+.input-item input{
+	color: black;
+}
+
+.container {
+	margin-top: 30px;
+	}
+	  
+input.ng-invalid.ng-touched {
+border: 1px solid red;
+}
+	  

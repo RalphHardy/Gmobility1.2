@@ -1,0 +1,20 @@
+<div>
+  <hr>
+  <ion-grid>
+    <ion-row>
+      <ion-col align-self-start>              
+        <ion-button start color="danger"   shape="round" expand="full"
+        (click)="onCancel">
+          Cancel
+        </ion-button>
+      </ion-col>
+      <ion-col align-self-end>            
+        <ion-button end color="success"  shape="round" expand="full"
+        type="submit"
+        [disabled]="okToPressSubmit">
+          {{ submitBtnLabel }}
+        </ion-button>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</div>

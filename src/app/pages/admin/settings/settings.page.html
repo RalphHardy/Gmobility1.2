@@ -1,0 +1,45 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="primary">
+      <ion-button (click)="selectMenuItem()">
+        <ion-icon  slot="icon-only" name="menu"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content padding>
+  <form [formGroup]="pageFormGroup" (ngSubmit)="presentAlert()">    
+    <ion-item>
+        <ion-label position="fixed" ><b>Hours:</b></ion-label>
+      <ion-select formControlName="setHoursRounding" class="full-width-select">
+        <ion-select-option
+          *ngFor="let opt of setHrsRoundingOpts"
+          [value]="opt">
+          {{opt}}
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+    <ion-item *ngIf="this.pageFormGroup.get('setHoursRounding').value !== setHrsRoundingOpts[0]">
+        <ion-col size="6">                
+            <ion-label ><b>Round Up Hours:</b></ion-label>
+        </ion-col>
+        <ion-col size="6">
+            <ion-checkbox        
+                formControlName="timeCardRoundUp">
+            </ion-checkbox>
+        </ion-col>
+    </ion-item>  
+  
+    <div *ngIf="this.formHasChanged">
+        <hr>      
+                <ion-button end color="success"  shape="round" expand="full"
+                type="submit"
+                [disabled]="!formHasChanged">
+                  Save Settings
+                </ion-button>
+    </div>
+  </form>
+</ion-content>
+

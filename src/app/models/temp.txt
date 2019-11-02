@@ -1,0 +1,25 @@
+  ,[WRNum]
+      ,[WOID] X
+      ,[EquipmentNum]
+      ,[RequestedBy]
+      ,[Instructions]
+      ,[Email]
+      ,[DateRequired] X
+      ,[Attention]
+      ,[Status]
+      ,[WorkRequestUserID]
+
+      ,[DateTimeEntered]
+      ,[EmailApproval] X
+      ,[EmailComplete] X
+      ,[KeepPrivate] X
+      ,[Priority]
+      ,[DepartmentID]
+      ,[Phone]
+      ,[WorkRequestTypeID]
+      ,[DeniedBy] X
+      ,[DateDenied] X
+      ,[LocationID]
+      ,[UserFld]
+      ,[CreatedinApp]
+      ,[SymptomID]

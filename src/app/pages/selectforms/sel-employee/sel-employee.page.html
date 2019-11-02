@@ -1,0 +1,49 @@
+<ion-header>
+    <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+        <ion-button  (click)="closePage()">
+            <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+        </ion-button>                 
+        </ion-buttons>
+        <ion-title class=title>{{ PageTitle }}</ion-title>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form #f="ngForm" (ngSubmit)="loadItems(f)">
+    <ion-list>
+      <ion-item>
+        <ion-label fixed>Emp Num:</ion-label>
+        <ion-input
+          type="text"
+          name="empNum"
+          placeholder="Enter search string"
+          ngModel>
+        </ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-label fixed>Emp Name:</ion-label>
+        <ion-input
+          type="text"
+          name="empName"
+          placeholder="Enter search string"
+          ngModel>
+        </ion-input>
+      </ion-item>
+    </ion-list>
+    <ion-button ion-button expand="full" color="warning"
+      type="submit"
+      [disabled]="f.value.empNum == '' && f.value.empName == '' ">
+      Search &nbsp; &nbsp; ({{ searchResult.length }})
+    </ion-button>
+    <ion-item *ngIf="searchResult.length > 0">To select: &nbsp; <i>click on employee from list...</i></ion-item>
+  </form>
+  <ion-list>
+    <ion-item 
+      *ngFor="let item of searchResult; let i = index" (click)="onClickItem(f, i)">
+      <span><b>{{ item.EmpNum }}</b> &nbsp; <i>{{ item.EmpName }}</i> </span>
+         
+    </ion-item>
+  </ion-list>
+
+</ion-content>

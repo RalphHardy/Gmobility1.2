@@ -1,0 +1,190 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+<form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+    
+    <ion-list>
+
+    <!-- Input URGENT WO FLAG -->
+    <ion-item  [color]="getUrgentColor()">
+        <ion-label>Urgent Work Order</ion-label>
+        <ion-toggle formControlName="urgentFlag"></ion-toggle>
+    </ion-item>
+        
+    <!-- Input WO DESCRIPTION -->
+    <ion-textarea textarea id="article_text" class="main-desc" type="text" 
+     placeholder="Enter description of work here"
+     formControlName="woDesc" rows="2">
+    </ion-textarea>
+
+    <ion-button ion-button expand="full" color="warning" class="action-button"
+    (click)="onSelectEquipment()">
+    Press to Select Equipment
+    </ion-button>
+    <ion-item>
+        <ion-label stacked><b>Equip Number:</b></ion-label>
+        <ion-input 
+            (ionChange)="setUpperCase('equipNum')" 
+            type="text"
+            formControlName="equipNum"></ion-input>
+    </ion-item>
+    <div class="desc-div">
+        {{ addWO.EquipDesc }}
+    </div> 
+
+    <!-- Input EMPLOYEE-->
+    <ion-button 
+        ion-button expand="full" color="warning" class="action-button"
+        (click)="onSelectEmployee()">
+        Press to Select Employee
+    </ion-button>
+    <ion-item>
+        <ion-label stacked><b>Emp Number:</b></ion-label>
+        <ion-input 
+            (ionChange)="setUpperCase('empNum')" 
+            type="text"
+            formControlName="empNum"></ion-input>
+    </ion-item>
+    <div class="desc-div">
+        {{ addWO.EmpName }}
+    </div> 
+ 
+    <!-- Input item WO TYPES -->
+    <ion-item>
+        <ion-label position="fixed" ><b>WO Type</b></ion-label>
+        <ion-select formControlName="woTypeDesc"  class="full-width-select" >
+        <ion-select-option
+            *ngFor="let woTypeDesc of woTypeCodes"
+            [value]="woTypeDesc">{{ woTypeDesc }}</ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input PRIORITY CODES-->
+
+    <ion-item>
+        <ion-label position="fixed" ><b>Work Priority</b></ion-label>
+        <ion-select formControlName="priorityCode">
+        <ion-select-option
+            *ngFor="let priority of priorityCodes"
+            [value]="priority">{{ priority }}</ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input TRADE CODES-->
+
+    <ion-item>
+        <ion-label position="fixed" ><b>Trade</b></ion-label>
+        <ion-select formControlName="tradeDesc">
+        <ion-select-option
+            *ngFor="let trade of tradeCodes"
+            [value]="trade">
+            {{trade}}
+        </ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input MACHINE STATES-->
+    <ion-item>
+        <ion-label position="fixed" ><b>Machine State</b></ion-label>
+        <ion-select formControlName="machState">
+        <ion-select-option
+            *ngFor="let machState of machineStateCodes"
+            [value]="machState">{{ machState }}</ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input ESTIMATED HOURS  -->
+    <ion-item>
+        <ion-label position="fixed" ><b>Est'd Hours</b></ion-label>
+        <ion-input
+            type="number"
+            formControlName="estHours"></ion-input>
+    </ion-item>
+
+    <!-- Input Symptom Code -->
+    <ion-item>
+        <ion-label position="fixed" ><b>Symptom</b></ion-label>
+        <ion-select formControlName="symptomCode"  class="full-width-select" >
+        <ion-select-option
+            *ngFor="let item of masterSymptomCodesData"
+            [value]="item.SymptomCode">
+            {{item.SymptomCode}} - {{item.SymptomDesc | lowercase }} 
+        </ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input Cause Code -->
+    <ion-item>
+        <ion-label position="fixed" ><b>Cause</b></ion-label>
+        <ion-select formControlName="causeCode"  class="full-width-select" >
+        <ion-select-option
+            *ngFor="let item of masterCauseCodesData"
+            [value]="item.CauseCode">
+            {{item.CauseCode}} - {{item.CauseDesc | lowercase }} 
+        </ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input Repair Code -->
+    <ion-item>
+        <ion-label position="fixed" ><b>{{applicVarsSvc.lbl_Repair}}</b></ion-label>
+        <ion-select formControlName="repairCode"  class="full-width-select" >
+        <ion-select-option
+            *ngFor="let item of masterRepairCodesData"
+            [value]="item.RepairCode">
+            {{item.RepairCode}} - {{item.RepairDesc | lowercase }} 
+        </ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input DATE STARTED -->   
+    <ion-item>
+      <ion-label fixed><b>Start Date:</b> </ion-label>
+      <ion-datetime  
+        formControlName="startDate"
+        display-format="DD-MMM-YYYY" >
+      </ion-datetime>
+    </ion-item>
+
+    <!-- Input DATE REQUIRED -->   
+    <ion-item>
+        <ion-label fixed><b> Required Date:</b> </ion-label>
+        <ion-datetime  
+          formControlName="dateRequired"
+          display-format="DD-MMM-YYYY" >
+        </ion-datetime>
+      </ion-item>
+
+
+    <div>
+        <hr>
+        <ion-grid>
+            <ion-row>
+            <ion-col align-self-start>              
+                <ion-button start color="danger" shape="round" expand="full"
+                *ngIf="formHasChanged"
+                (click)="closePage()">
+                Cancel
+                </ion-button>
+            </ion-col>
+            <ion-col align-self-end>            
+                <ion-button end color="success"  shape="round" expand="full"
+                type="submit"
+                [disabled]="!pageFormGroup.valid || addUpdateSucceeded">
+                {{ submitBtnLabel }}
+                </ion-button>
+            </ion-col>
+            </ion-row>
+        </ion-grid>
+    </div>
+    </ion-list>
+    </form>
+
+</ion-content>

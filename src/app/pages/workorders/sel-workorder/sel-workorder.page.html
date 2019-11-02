@@ -1,0 +1,113 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button *ngIf="!httpRequestsSvc.connected2Server"
+        (click)="connectionSvc.checkIfConnected2Server(true)">
+        <ion-icon  slot="icon-only" name="pulse" color="danger" ></ion-icon>
+      </ion-button>  
+      <ion-button *ngIf="httpRequestsSvc.connected2Server"
+        (click)="refreshFromServer()">
+        <ion-icon  slot="icon-only" name="refresh"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-item color="primary">
+    <ion-grid fixed>
+      <ion-row>
+        <ion-col size="10">         
+            <ion-select [(ngModel)]="workstatus"
+            class="full-width-select" >
+              <ion-select-option value="1" >Only my Work Orders</ion-select-option>
+              <ion-select-option value="2" >Pool Work Orders</ion-select-option>
+              <ion-select-option value="0" >All Work Orders</ion-select-option>
+            </ion-select>      
+        </ion-col>
+  
+        <ion-col size="2">
+          <ion-button 
+            size="small" 
+            (click)="createWO()">
+            <ion-icon slot="icon-only"  name="add">
+            </ion-icon>
+          </ion-button>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+  </ion-item>
+  
+
+  <ion-list 
+    *ngFor="let WO of workorderList" >  
+    <ion-item  [color]="getWoPanelColor(WO)"
+        (click)="onClickWo(WO.WoNumber)"
+        *ngIf="checkIfSelected(workstatus, WO.AssignedToUserId, WO.WoMobStatusId, WO.WoNumber)">
+      <ion-grid no-padding fixed>        
+        <ion-row>
+          <ion-col size=7>
+              <b>WO#</b> {{ WO.WoNumber | uppercase }}
+          </ion-col>            
+          <ion-col class="fld-vall" size=5 text-end>
+            <b>Priority:</b> {{ WO.PriorityId}}
+          </ion-col>
+        </ion-row>            
+        <ion-row >
+          <ion-col size=12 class="desc-style">
+              {{ WO.WoDesc}}
+          </ion-col>           
+        </ion-row>  
+
+        <ion-row>
+          <ion-col class="fld-lbl" size=4>
+            Equip/Asset:
+          </ion-col>  
+          <ion-col class="fld-lbl" size=8>
+            {{ WO.EquipNumber}}
+          </ion-col>
+        </ion-row>         
+        <ion-row >
+            <ion-col size=12 class="desc-style">
+              {{ WO.EquipDesc}}
+          </ion-col>    
+        </ion-row>
+
+        <ion-row>
+            <ion-col class="fld-lbl" size=4>
+              Trade:
+            </ion-col>    
+            <ion-col class="fld-vall" size=8>
+              {{ WO.TradeDesc }}
+            </ion-col>     
+          </ion-row>
+
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+            Mbl Status:
+          </ion-col>
+
+          <ion-col class="fld-vall" size="6" *ngIf="!WO.UrgentFlag || WO.WoMobStatusId == 5">
+              {{ WO.WoMobStatusId}}-{{ WO.WoMobStatusDesc }}
+          </ion-col>
+
+          <ion-col class="urgent-item" size="6" *ngIf="WO.UrgentFlag && WO.WoMobStatusId !== 5">
+            Urgent Work Order
+          </ion-col>
+
+          <ion-col size="2">
+            <ion-button *ngIf="(WO.WoMobStatusId<4) && ( WO.WoMobStatusId == 1 || WO.WoMobStatusId == 3 || 
+              ((WO.WoMobStatusId == 2 || WO.UrgentFlag) && httpRequestsSvc.connected2Server) )"
+              (click)="changeWoStatus(WO.WoNumber)">
+              <ion-icon  slot="icon-only" name="swap"></ion-icon>
+            </ion-button>
+             
+          </ion-col>
+        </ion-row>
+
+      </ion-grid>        
+    </ion-item>
+  </ion-list>  
+</ion-content>

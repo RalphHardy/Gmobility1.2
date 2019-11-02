@@ -1,0 +1,29 @@
+[debugIssue#  1906-20]  Time: 3350
+connection.svc.ts:79 isConnected2Server(): AFTER HTTP
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 9560
+
+
+connection.svc.ts:75 isConnected2Server(): Device IS online - before HTTP
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 9561
+http-requests.service.ts:78 httprequest.testServerConnection(): BEFORE Http false
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 9827
+http-requests.service.ts:84 httprequest.testServerConnection():  AFTER Http true 
+{Code: 0, Description: "1.0.0.37"}
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 9830
+connection.svc.ts:79 isConnected2Server(): AFTER HTTP
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 920
+workorder-data.svc.ts:661 **Tick: 1 doneResync==> false
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 1835
+workorder-data.svc.ts:661 **Tick: 2 doneResync==> true
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 1837
+workorder-data.svc.ts:664 OK2GET WO FROM SERVER!!!!!
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 8781
+workorder-data.svc.ts:669 After GetRequest workorder 
+(27) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+utilities.svc.ts:364 [debugIssue#  1906-20]  Time: 8786
+workorder-data.svc.ts:744 after processing all WOs:  
+(27) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+lso-requests.service.ts:145 ***DATA STORED FOR 18-workorders-TestRcSync ==> 
+(27) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+﻿
+​

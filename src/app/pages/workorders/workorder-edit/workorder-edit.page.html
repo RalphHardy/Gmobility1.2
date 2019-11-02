@@ -1,0 +1,185 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+      <ion-buttons slot="primary"
+        *ngIf="changeAllowed && !formHasChanged">
+        <ion-button (click)="selectMenuItem()">
+          <ion-icon  slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+  
+<ion-content>
+
+  <ion-item class="main-desc">
+        {{ editWO.WoDesc}}
+  </ion-item>
+  
+  <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+
+  
+    <!-- Input URGENT WO FLAG -->
+    <ion-item *ngIf="editWO.UrgentFlag" [color]="getUrgentColor()">
+      <ion-label>Urgent Work Order</ion-label>
+      <ion-toggle formControlName="urgentFlag"></ion-toggle>
+    </ion-item>
+      
+    
+    <ion-item>
+        <ion-label stacked><b>Equip Number:</b></ion-label>
+        <ion-input 
+            readonly="true"
+            type="text"
+            formControlName="equipNum"></ion-input>
+    </ion-item>
+    <div class="desc-div">
+        {{ editWO.EquipDesc }}
+    </div>  
+
+    <!-- Display WO Instruction -->
+    <ion-item class="main-desc" *ngIf="editWO.WoInstructions !== ''">
+        Instructions: {{ editWO.WoInstructions}}
+    </ion-item>
+    <!-- Input item WO TYPES -->
+  <ion-item>
+    <ion-label stacked><b>WO Type:</b></ion-label>
+    <ion-input 
+        readonly="true"
+        type="text"
+        formControlName="woTypeDesc"></ion-input>
+  </ion-item>
+
+ <!-- Input TRADE CODES-->
+  <ion-item *ngIf="currWO.EnterpriseWoNum==''">
+      <ion-label position="fixed" ><b>Trade</b></ion-label>
+      <ion-select formControlName="tradeDesc" >
+      <ion-select-option
+          *ngFor="let trade of tradeCodes"
+          [value]="trade">
+          {{trade}}
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+  <ion-item *ngIf="currWO.EnterpriseWoNum!=''">
+    <ion-label stacked><b>Trade:</b></ion-label>
+    <ion-input 
+        readonly="true"
+        type="text"
+        formControlName="tradeDesc"></ion-input>
+  </ion-item>
+
+    <!-- Input MACHINE STATES-->
+    <ion-item  *ngIf="currWO.EnterpriseWoNum==''">
+        <ion-label position="fixed" ><b>Machine State</b></ion-label>
+        <ion-select formControlName="machStateDesc">
+        <ion-select-option
+            *ngFor="let machState of machineStateCodes"
+            [value]="machState">
+            {{ machState }}</ion-select-option>
+        </ion-select>
+    </ion-item>
+    <ion-item *ngIf="currWO.EnterpriseWoNum!=''">
+      <ion-label stacked><b>Mach State:</b></ion-label>
+      <ion-input 
+          readonly="true"
+          type="text"
+          formControlName="machStateDesc"></ion-input>
+    </ion-item>
+
+    <!-- Input PRIORITY CODES-->
+
+    <ion-item *ngIf="currWO.EnterpriseWoNum==''">
+        <ion-label position="fixed" ><b>Work Priority</b></ion-label>
+        <ion-select formControlName="priorityCode">
+        <ion-select-option
+            *ngFor="let priority of priorityCodes"
+            [value]="priority">{{ priority }}</ion-select-option>
+        </ion-select>
+    </ion-item>
+    <ion-item *ngIf="currWO.EnterpriseWoNum!=''">
+      <ion-label stacked><b>Work Prioity:</b></ion-label>
+      <ion-input 
+          readonly="true"
+          type="text"
+          formControlName="priorityCode"></ion-input>
+    </ion-item>
+
+    <!-- Input item #3 -->
+   
+    <ion-item class="grayed">
+      <ion-label position="fixed" ><b>Current Status:</b></ion-label>
+      <ion-input 
+          readonly="true"
+          type="text"
+          formControlName="currStatusDesc">
+      </ion-input>
+    </ion-item>
+
+    <ion-button expand="full" color="warning" 
+    (click)="editWoDates()">
+    Press for W/O Dates
+    </ion-button>
+   
+    <!-- Input Symptom Code -->
+    <ion-item>
+      <ion-label position="fixed" ><b>Symptom</b></ion-label>
+      <ion-select formControlName="symptomCode"  class="full-width-select" >
+      <ion-select-option
+          *ngFor="let item of masterSymptomCodesData"
+          [value]="item.SymptomCode">
+          {{item.SymptomCode}} - {{item.SymptomDesc | lowercase }} 
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+
+  <!-- Input Cause Code -->
+  <ion-item>
+      <ion-label position="fixed" ><b>Cause</b></ion-label>
+      <ion-select formControlName="causeCode"  class="full-width-select" >
+      <ion-select-option
+          *ngFor="let item of masterCauseCodesData"
+          [value]="item.CauseCode">
+          {{item.CauseCode}} - {{item.CauseDesc | lowercase }} 
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+
+  <!-- Input Repair Code -->
+  <ion-item>
+      <ion-label position="fixed" ><b>{{applicVarsSvc.lbl_Repair}}</b></ion-label>
+      <ion-select formControlName="repairCode"  class="full-width-select" >
+      <ion-select-option
+          *ngFor="let item of masterRepairCodesData"
+          [value]="item.RepairCode">
+          {{item.RepairCode}} - {{item.RepairDesc | lowercase }} 
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+
+    <div>
+        <hr>
+        <ion-grid>
+          <ion-row>
+            <ion-col align-self-start>              
+              <ion-button start color="danger" shape="round" expand="full"
+              *ngIf="formHasChanged"
+              (click)="closePage()">
+                Cancel
+              </ion-button>
+            </ion-col>
+            <ion-col align-self-end>            
+              <ion-button end color="success"  shape="round" expand="full"
+              type="submit"
+              [disabled]="!pageFormGroup.valid || !formHasChanged">
+                {{ submitBtnLabel }}
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </div>
+  </form> 
+</ion-content>

@@ -1,0 +1,88 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+      <ion-buttons slot="primary"
+      *ngIf="!formHasChanged">
+        <ion-button (click)="selectMenuItem()">
+          <ion-icon  slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+  </ion-header>
+  
+
+<ion-content>
+
+  <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+
+    <!-- Input EMPLOYEE-->
+    <ion-button ion-button expand="full" color="warning"
+    (click)="onSelectEmployee()">
+    Press to Select Employee
+    </ion-button>
+    <ion-item>
+        <ion-label stacked><b>Emp #</b></ion-label>
+        <ion-input 
+            (ionChange)="setUpperCase('empNum')" 
+            type="text"
+            formControlName="empNum"></ion-input>
+    </ion-item>
+    <div class="desc-div">
+        {{ addEditTC.EmpName }}
+    </div>  
+
+      <!-- Input item #5 -->   
+      <ion-item>
+          <ion-label postion="fixed"><b>Date Worked:</b></ion-label>
+          <ion-datetime  formControlName="workDate"
+            display-format="DD-MMM-YYYY" >
+          </ion-datetime>
+        </ion-item>
+        
+        <ion-button *ngIf="pageFormGroup.value.dateWorked!=''"
+          ion-button expand="full" color="warning"
+          (click)="onClearDate()">
+          Clear Completed Date
+        </ion-button>
+
+    <!-- Input ESTIMATED HOURS  -->
+    <ion-item>
+        <ion-label postion="fixed"><b>Hours Worked:</b></ion-label>
+        <ion-input
+            type="number"
+            inputmode="numeric"
+            formControlName="hoursWorked"></ion-input>
+    </ion-item>
+    <ion-button *ngIf="pageFormGroup.value.hoursWorked!=''"
+      ion-button expand="full" color="warning"
+      (click)="onClearHrsWorked()">
+      Clear Hours Worked
+    </ion-button>
+          
+    
+    <div>
+      <hr>
+      <ion-grid>
+        <ion-row>
+          <ion-col align-self-start>              
+            <ion-button start color="danger" shape="round" expand="full"
+            *ngIf="formHasChanged"
+            (click)="closePage()">
+              Cancel
+            </ion-button>
+          </ion-col>
+          <ion-col align-self-end>            
+            <ion-button end color="success"  shape="round" expand="full"
+            type="submit"
+            [disabled]="!pageFormGroup.valid">
+              {{ submitBtnLabel }}
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </div>
+  </form>
+</ion-content>

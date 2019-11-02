@@ -1,0 +1,153 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+        <ion-back-button></ion-back-button>            
+    </ion-buttons>
+    <ion-buttons slot="primary">
+      <ion-button (click)="selectMenuItem()">
+        <ion-icon  slot="icon-only" name="menu"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  <ion-title class=title>{{ PageTitle }}</ion-title>
+</ion-toolbar>
+</ion-header>
+
+<ion-content>  
+  <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+    <ion-list>
+  <!-- Input WO DESCRIPTION -->
+      <ion-textarea textarea id="article_text" class="main-desc" type="text" 
+      placeholder="Enter description of work here"
+      formControlName="Description" rows="3">
+      </ion-textarea>
+
+      <ion-button ion-button expand="full" color="warning" class="action-button"
+      (click)="onSelectEquipment()">
+      Press to Select Equipment
+      </ion-button>
+      <ion-item>
+          <ion-label stacked><b>Equip Number:</b></ion-label>
+          <ion-input 
+              (ionChange)="setUpperCase('EquipNumber')" 
+              type="text"
+              formControlName="EquipNumber"></ion-input>
+      </ion-item>
+      <ion-item>
+          <ion-label stacked><b>Equip Desc:</b></ion-label>
+          <ion-input 
+              type="text"
+              formControlName="EquipDesc"></ion-input>
+      </ion-item>
+    
+    <!-- Input DEPARTMENTS -->
+      <ion-item>
+          <ion-label position="fixed" ><b>Department</b></ion-label>
+          <ion-select formControlName="DepartmentId">
+          <ion-select-option
+              *ngFor="let dept of departments"
+              [value]="dept.DeptId">
+              {{dept.DeptName }} [{{dept.WoTypePrefix}}]
+          </ion-select-option>
+          </ion-select>
+      </ion-item>
+
+    <!-- Input LOCATION -->
+    <ion-item>
+      <ion-label position="fixed" ><b>Location</b></ion-label>
+      <ion-select formControlName="EquipLocId">
+      <ion-select-option
+          *ngFor="let equipLoc of equipLocations"
+          [value]="equipLoc.LocationId">
+          {{equipLoc.Name}}
+      </ion-select-option>
+      </ion-select>
+  </ion-item>
+
+
+      <!-- Input PRIORITY CODES-->
+      <ion-item>
+        <ion-label position="fixed" ><b>W/R Priority</b></ion-label>
+        <ion-select formControlName="PriorityId">
+        <ion-select-option
+            *ngFor="let PriorityId of [1, 2, 3, 4, 5]"
+            [value]="PriorityId">{{ PriorityId }}</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <!-- Input WORK-REQ-TYPES -->
+      <ion-item>
+          <ion-label position="fixed" ><b>W/R Type</b></ion-label>
+          <ion-select formControlName="WorkReqTypeId">
+          <ion-select-option
+              *ngFor="let WRtype of workRequestTypes"
+              [value]="WRtype.WorkReqTypeId">
+              {{WRtype.WorkReqTypeDesc }}
+          </ion-select-option>
+          </ion-select>
+      </ion-item>
+
+   
+    <!-- Input Symptom Code -->
+    <ion-item>
+      <ion-label position="fixed" ><b>Symptom</b></ion-label>
+      <ion-select formControlName="SymptomCode" >
+      <ion-select-option
+          *ngFor="let item of masterSymptomCodesData"
+          [value]="item.SymptomCode">
+          {{item.SymptomCode}} - {{item.SymptomDesc | lowercase }} 
+      </ion-select-option>
+      </ion-select>
+    </ion-item>
+
+      <!-- Input REQUESTED BY  -->
+      <ion-item>
+        <ion-label fixed><b>Requested By:</b></ion-label>
+        <ion-input 
+          type="text"
+          formControlName="RequestedBy">
+        </ion-input>
+      </ion-item>
+
+
+      <!-- Input EMAIL  -->
+      <ion-item class="input-item">
+        <ion-label fixed><b>Email to:</b></ion-label>
+        <ion-input
+            type="email"
+            formControlName="EmailAddress">
+        </ion-input>
+      </ion-item>
+
+      <!-- Input ATTENTION  -->
+      <ion-item>
+        <ion-label fixed><b>Attention:</b></ion-label>
+        <ion-input 
+          type="text"
+          formControlName="AttentionTo">
+        </ion-input>
+      </ion-item>
+
+      <div>
+        <hr>
+        <ion-grid>
+            <ion-row>
+            <ion-col align-self-start>              
+                <ion-button start color="danger" shape="round" expand="full"
+                *ngIf="formHasChanged"
+                (click)="closePage()">
+                Cancel
+                </ion-button>
+            </ion-col>
+            <ion-col align-self-end>            
+                <ion-button end color="success"  shape="round" expand="full"
+                type="submit"
+                [disabled]="!pageFormGroup.valid || addWR.WorkReqNum!=='' ">
+                {{ submitBtnLabel }}
+                </ion-button>
+            </ion-col>
+            </ion-row>
+        </ion-grid>
+      </div>
+    </ion-list>
+  </form>
+</ion-content>

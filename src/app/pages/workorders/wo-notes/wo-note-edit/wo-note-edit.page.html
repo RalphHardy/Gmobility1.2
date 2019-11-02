@@ -1,0 +1,77 @@
+<ion-header>
+    <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+        <ion-button  (click)="closePage()">
+            <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+        </ion-button>                 
+        </ion-buttons>
+        <ion-title class=title>{{ PageTitle }}</ion-title>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content>
+
+    <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+        <!-- Input item #1 -->
+        <ion-item>
+            <ion-label>Priority</ion-label>
+            <ion-toggle formControlName="notePriority"></ion-toggle>
+        </ion-item>
+
+        <!-- Input item #2 -->  
+        <ion-item *ngIf="!isEdit">
+            <ion-label floating>Note Type</ion-label>
+            <ion-select formControlName="noteTags">
+                <ion-select-option
+                    readonly="true"
+                    *ngFor="let tag of tagOptions"
+                    [value]="tag"> {{ tag }}
+                </ion-select-option>
+            </ion-select>
+        </ion-item>
+
+        <!-- Input item #2 -->  
+        <ion-item *ngIf="isEdit">
+            <ion-label floating>Note Type</ion-label>
+            <ion-input formControlName="noteTags"
+            readonly="true"
+            type="text"
+            readonly="true" >
+            </ion-input>
+        </ion-item>
+
+        <!-- Input item #3 -->   
+        <ion-item>
+            <ion-label position="floating"><b>Note text:</b></ion-label>
+            <ion-textarea class="desc-style" type="text"
+            placeholder="Enter your information here"
+            formControlName="noteText" rows="6">
+            </ion-textarea>
+
+        </ion-item>
+
+        <div>
+            <hr>
+            <ion-grid>
+            <ion-row>
+                <ion-col align-self-start>              
+                <ion-button start color="danger" shape="round" expand="full"
+                *ngIf="formHasChanged"
+                (click)="closePage()">
+                    Cancel
+                </ion-button>
+                </ion-col>
+                <ion-col align-self-end>            
+                <ion-button end color="success"  shape="round" expand="full"
+                *ngIf="formHasChanged"
+                type="submit"
+                [disabled]="!pageFormGroup.valid">
+                    {{ submitBtnLabel }}
+                </ion-button>
+                </ion-col>
+            </ion-row>
+            </ion-grid>
+        </div>
+    </form>
+
+    </ion-content>

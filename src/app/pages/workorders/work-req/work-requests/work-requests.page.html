@@ -1,0 +1,96 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+    <ion-buttons slot="start"> 
+      <ion-button *ngIf="!httpRequestsSvc.connected2Server"
+        (click)="connectionSvc.checkIfConnected2Server(true)">
+        <ion-icon  slot="icon-only" name="pulse" color="danger" ></ion-icon>
+      </ion-button>  
+      <ion-button *ngIf="httpRequestsSvc.connected2Server"
+        (click)="refreshFromServer()">
+        <ion-icon  slot="icon-only" name="refresh"></ion-icon>
+      </ion-button>           
+    </ion-buttons>
+    <ion-buttons slot="primary">
+      <ion-button (click)="addEditWorkRequest(-1)">
+        <ion-icon  slot="icon-only" name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+
+  <ion-list 
+    *ngFor="let WR of workRequestList; let idx = index" >  
+    <ion-item  [color]="getWoPanelColor(idx)"
+        (click)="addEditWorkRequest(idx)">
+      <ion-grid no-padding fixed>        
+        <ion-row>
+          <ion-col class="fld-lbl" size=3>
+            W/Req #:
+          </ion-col>  
+          <ion-col size=4 class="urgent-item" *ngIf="!WR.WorkReqNum" >
+            **Not Sent**
+          </ion-col>    
+          <ion-col size=4 *ngIf="WR.WorkReqNum">
+             {{ WR.WorkReqNum | uppercase }}
+          </ion-col>                
+          <ion-col class="fld-vall" size=5 text-end>
+            <b>Priority:</b> {{ WR.PriorityId}}
+          </ion-col>
+        </ion-row>            
+        <ion-row >
+          <ion-col class="fld-lbl" size=3>
+            Created:
+          </ion-col>  
+          <ion-col size=9>
+              {{ WR.CreatedDateTime}}
+          </ion-col>  
+        </ion-row>            
+        <ion-row >
+          <ion-col size=12 class="desc-style">
+              {{ WR.Description}}
+          </ion-col>           
+        </ion-row>  
+
+        <ion-row>
+          <ion-col class="fld-lbl" size=4>
+            Equip/Asset:
+          </ion-col>  
+          <ion-col class="fld-lbl" size=8>
+            {{ WR.EquipNumber}}
+          </ion-col>
+        </ion-row>         
+        <ion-row >
+            <ion-col size=12 class="desc-style">
+              {{ WR.EquipDesc}}
+          </ion-col>    
+        </ion-row>
+
+        <ion-row>
+            <ion-col class="fld-lbl" size=4>
+              W/R Type:
+            </ion-col>    
+            <ion-col class="fld-vall" size=8>
+              {{ WR.WorkReqTypeDesc }}
+            </ion-col>     
+          </ion-row>
+
+          <ion-row>
+              <ion-col class="fld-lbl" size=4>
+                Symptom:
+              </ion-col>    
+              <ion-col class="fld-vall" size=8>
+                {{ WR.SymptomCodeDesc }}
+              </ion-col>     
+            </ion-row>
+      </ion-grid>        
+    </ion-item>
+    <ion-button expand="block" color="warning" fill="solid"
+    *ngIf="!WR.WorkReqNum"
+    (click)="sendToServer(idx)">
+      Send to Server
+    </ion-button>
+  </ion-list>  
+</ion-content>

@@ -1,0 +1,98 @@
+<ion-header>
+    <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+            <ion-back-button></ion-back-button>            
+        </ion-buttons>
+        <ion-title class=title>{{PageTitle}}</ion-title>
+      </ion-toolbar>
+  </ion-header>
+  
+ 
+<ion-content>
+  <div *ngIf="attachments.length == 0" text-center>* No attachments *</div>
+  <ion-list *ngIf="currWO">
+    <ion-card  *ngFor="let attachment of attachments; let attachIdx = index">
+      <ion-grid fixed>
+          <ion-row>
+            <ion-col size="1">
+              ({{attachment.MobLineId}})
+            </ion-col>
+            <ion-col size="8">
+              <ion-button *ngIf="!attachment.RetrievedFromServer"
+                expand="full" color="warning"
+                (click)="retrieveWoAttachmentFromServer(attachIdx)">
+                  Get From Server
+                <ion-icon slot="end" name="trending-up"></ion-icon>
+               </ion-button>
+              <ion-item  *ngIf="attachment.RetrievedFromServer"
+                  (click)="viewPicOrPdf(attachIdx)">
+                  <ion-thumbnail *ngIf="attachment.FileName.toUpperCase().indexOf('.PDF') == -1">
+                    <img [src]="attachment.UrlPathName">                     
+                  </ion-thumbnail>      
+                  <ion-thumbnail *ngIf="attachment.FileName.toUpperCase().indexOf('.PDF') > 0">
+                      <img src="../../../assets/images/PDFimage2.png">     
+                  </ion-thumbnail>       
+              </ion-item>
+            </ion-col>
+            <ion-col size="3"> 
+              <!-- *ngIf="attachment.WorkOrderID == 0" -->
+                <ion-button slot="end" fill="clear" 
+                (click)="deleteUnsavedAttachment(attachIdx)">
+                  <ion-icon slot="icon-only" name="trash"></ion-icon>
+                </ion-button>    
+            </ion-col>
+          </ion-row>
+          <ion-row>
+              <div> Filename: {{attachment.FileName}}</div>
+          </ion-row>
+          <!--ion-row>
+              <div class="main-desc"> Url: {{attachment.UrlPathName}}</div>
+          </ion-row-->
+      </ion-grid>
+
+    </ion-card>
+  </ion-list>
+
+
+    <div class="sub-title">
+      Unattached Images ({{ images.length }})
+    </div>
+    <ion-list>
+      <ion-card  *ngFor="let img of images; index as pos">
+        <ion-grid fixed>
+          <ion-row>
+            <ion-col size="5">
+              <ion-item (click)="displayPhoto(img.FilePathName, img.ImageName)">
+                <ion-thumbnail slot="start">
+                  <ion-img [src]="img.UrlPathName"></ion-img>
+                </ion-thumbnail>
+              </ion-item>
+            </ion-col>
+            <ion-col size="5"> 
+            <ion-button expand="full" color="warning" 
+              (click)="moveImage2WoAttachment(img)">
+              Attach
+            </ion-button>
+            </ion-col>
+            <ion-col size="2">
+              
+            <ion-button fill="clear" (click)="deleteImage(img)">
+              <ion-icon slot="icon-only" name="trash"></ion-icon>
+            </ion-button>
+          </ion-col> 
+            </ion-row>
+            <ion-row>
+                <div text-wrap> Filename: {{img.ImageName}}</div>
+          </ion-row>
+        </ion-grid>
+      </ion-card>
+  </ion-list>
+</ion-content>
+ 
+<ion-footer>
+  <ion-toolbar color="primary">
+    <ion-button fill="clear" expand="full" color="light" (click)="selectImage()">
+      <ion-icon slot="start" name="camera"></ion-icon>
+      Select Image</ion-button>
+  </ion-toolbar>
+</ion-footer>

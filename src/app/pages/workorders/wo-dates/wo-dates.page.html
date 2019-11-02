@@ -1,0 +1,55 @@
+<ion-header>
+  <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+      <ion-button  (click)="goBack()">
+          <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+      </ion-button>                 
+      </ion-buttons>
+      <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+<ion-content>
+    <form [formGroup]="pageFormGroup">
+
+      <!-- Input item dateReported -->   
+      <ion-item>
+        <ion-label postion="fixed"><b>Date Reported:</b></ion-label>
+        <ion-datetime  formControlName="dateReported"
+            displayFormat="DD-MMM-YYYY H:MM A" minuteValues="0,15,30,45">
+        </ion-datetime>
+      </ion-item>
+
+      <!-- Input item dateRequired -->   
+      <ion-item>
+        <ion-label postion="fixed"><b>Date Required:</b></ion-label>
+        <ion-datetime  formControlName="dateRequired"
+          display-format="DD-MMM-YYYY" >
+        </ion-datetime>
+      </ion-item>
+
+      <!-- Input item respondedDateTime -->   
+      <ion-item>
+        <ion-label postion="fixed"><b>Date Responded:</b></ion-label>
+        <ion-datetime  formControlName="dateResponded"
+          display-format="DD-MMM-YYYY H:MM A" minuteValues="0,15,30,45">
+        </ion-datetime>
+      </ion-item>
+
+      <!-- Input item startDate -->   
+      <ion-item>
+          <ion-label postion="fixed"><b>Date Started:</b></ion-label>
+          <ion-datetime  formControlName="startDate"
+            display-format="DD-MMM-YYYY" >
+          </ion-datetime>
+        </ion-item>
+
+      <!-- Input item dateCompleted -->   
+      <ion-item>
+          <ion-label postion="fixed"><b>Date Required:</b></ion-label>
+          <ion-datetime  formControlName="dateCompleted"
+            display-format="DD-MMM-YYYY" >
+          </ion-datetime>
+        </ion-item>
+    </form>
+
+</ion-content>

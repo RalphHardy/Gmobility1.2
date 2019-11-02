@@ -1,0 +1,173 @@
+// http://ionicframework.com/docs/theming/
+@import '~@ionic/angular/css/core.css';
+@import '~@ionic/angular/css/normalize.css';
+@import '~@ionic/angular/css/structure.css';
+@import '~@ionic/angular/css/typography.css';
+
+@import '~@ionic/angular/css/padding.css';
+@import '~@ionic/angular/css/float-elements.css';
+@import '~@ionic/angular/css/text-alignment.css';
+@import '~@ionic/angular/css/text-transformation.css';
+@import '~@ionic/angular/css/flex-utils.css';
+
+//#app-page-settings {
+    // --ion-background-color: #fff;
+   // --ion-item-background-color: #fff;
+//}
+
+.title{
+    text-align: center;
+    font-size: medium;
+    color: white;
+    background-color: #004d66;
+}
+
+.sub-title{
+    text-align: center;
+    font-size-adjust: 0.75;
+    color: white;
+    background-color: #004d66;
+}
+
+.warning-msg {
+    font-style: italic;
+    padding-left: 2px;
+    color: red;
+    font-weight: 550;
+}
+
+.desc-style {
+    font-style: italic;
+    font-weight: 530; // normal = 400, 100 is least and 900 is most
+    padding-left: 2px;
+    white-space: normal;  
+    overflow-wrap: break-word;
+    background-color: #a3c2c2;
+}
+
+.narrower-button {
+    padding-top: 4px;
+    padding-bottom: 2px;
+}
+
+.desc-div {
+    font-style: italic;
+    font-size: smaller;
+    font-weight: 540; // normal = 400, 100 is least and 900 is most
+    padding-left: 0px;
+    padding-top: 2px;
+    padding-bottom: 4px;
+    white-space: normal;  
+    overflow-wrap: break-word;
+    background-color: #a3c2c2;
+    text-align: center;
+}
+
+.red-bkgd {
+    text-align: center;
+    font-size-adjust: 1.15;
+    color: white;
+    background-color: red;
+}
+
+.white-bkgd {
+    text-align: left;
+    font-size-adjust: 0.85;
+    color: black;
+    background-color: white;
+}
+.data-div {
+    font-size: smaller;
+}
+.std-style {
+    font-size: small;
+}
+
+.fld-lbl {
+    font-weight: bold;
+}
+
+.fld-val {
+    font-weight: 500; // normal = 400, 100 is least and 900 is most
+}
+
+.full-width-select {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.sm-opts {
+    font-size-adjust: 0.65;
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+.main-desc { // to be used as a class for <div></div>
+    font-style: italic;
+    font-size: smaller;
+    white-space: normal;  
+    overflow-wrap: break-word;
+    color: rgb(47, 0, 255);
+    font-weight: 700; // normal = 400, 100 is least and 900 is most
+    background-color: #5c8a8a; // #004d66;
+}
+
+.click-item {
+    font-size: smaller;
+    text-align: left;   
+    padding: 4px;
+    padding-top: 2px;
+    padding-bottom: 3px;
+    padding-right: 4px; 
+    background-color: #a3c2c2;
+}
+
+.urgent-item {
+    font-weight: 700; // normal = 400, 100 is least and 900 is most
+    text-align: center;    
+    color: white;
+    background-color: red;
+}
+
+.action-button {
+    font-size: smaller;
+    font-weight: 500; 
+}
+
+.alert-wrapper {
+    --max-width: 100%;
+    --min-width: 90%;
+    --background: #a3c2c2;
+    --ion-text-color: #fff
+}
+.my-checkbox {
+    --max-width: 100%;
+    --min-width: 90%;
+    align-items: right;
+}
+.scroll-content {
+    padding-bottom: 0 !important;
+}
+
+ion-datetime {
+    padding-right: 120px;
+}
+
+ion-card {
+    font-size: smaller;
+    text-align: left;    
+}
+
+ion-item {
+    font-size: smaller;
+    text-align: left;    
+}
+
+ion-col {
+    padding-block-start: 1px;
+    padding-left: 1px;
+    //background-color: #e6f9ff;
+}
+ion-toolbar {
+    background-color: black;
+}

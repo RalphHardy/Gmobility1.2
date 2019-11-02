@@ -1,0 +1,1259 @@
+Skip to content
+ 
+Search or jump to…
+
+Pull requests
+Issues
+Marketplace
+Explore
+ 
+@RalphHardy 
+1
+0 0 GMobility/GMob.API Private
+ Code  Issues 0  Pull requests 0  Projects 0  Wiki  Security  Insights  Settings
+GMob.API/src/GMob.API/Controllers/SyncWorkorderController.cs
+@jimfo234 jimfo234 Updates
+226e21d 4 minutes ago
+1241 lines (1124 sloc)  67.9 KB
+    
+#define AddlLogging
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Data.Common;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Hosting;
+using System.Text;
+using GMob.API.Models;
+using System.Data.SqlTypes;
+using Newtonsoft.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+
+namespace GMob.API.Controllers
+{
+    [Authorize]
+    [Route("api/syncworkorder")]
+    public class SyncWorkorderController : Controller
+    {
+        public readonly ILogger<SyncWorkorderController> _logger;
+        private IHostingEnvironment _env;
+        private string _baseScriptPath;
+        private string _connectionString;
+        private int _workOrderId, _mobileUserId;
+        private List<string> _sbScript;
+        private StringBuilder _sbInfo;
+        private enum _arrayList { WorkOrder, WoLaborLines, WoActualTimeLines, WoMaterialLines, WoNotes };
+        private IHttpContextAccessor _httpContextAccessor;
+        public SyncWorkorderController(ILogger<SyncWorkorderController> logger, IHostingEnvironment env, IHttpContextAccessor httpContextAccessor)
+        {
+            _logger = logger;
+            _env = env;
+            _sbScript = new List<string>();
+            _sbInfo = new StringBuilder();
+            _httpContextAccessor = httpContextAccessor;
+        }
+        [HttpPost()]
+        public IActionResult UpdateWorkorder([FromBody] Models.WorkorderDto mobileContent)
+        {
+            string spName = "UpdateWorkorder", functionName = "UpdateWorkorder";
+            string ip = Utility.GetClientIP(HttpContext);
+            _logger.LogInformation(Environment.NewLine + "**CALLED api/syncworkorder");
+            _logger.LogInformation($"*In {functionName}, ip = {ip}");
+          
+            string fileName = DateTime.Now.ToString("yyyy-MM-dd--HH-mm-ss") + ".txt";
+            bool addNewWorkorder = false;
+
+            try
+            {
+                string syncDbName = _httpContextAccessor.GetSyncDbName();
+                _connectionString = Security.GetConnString(syncDbName);
+                _httpContextAccessor.GetMobileUserId(out _mobileUserId, _connectionString);
+                _sbInfo.AppendLine($"ip = {ip}");
+                _sbInfo.AppendLine("AssemblyVersion: " + typeof(Startup).Assembly.GetName().Version.ToString() + Environment.NewLine);
+                Utility.SetScriptLogFile(out _baseScriptPath);
+
+                if (mobileContent == null)
+                    throw new Exception("workorder content is null");
+
+                _workOrderId = GetWorkorderID(mobileContent.WoNumber);
+                if (_workOrderId <= 0) // doesn't exist so add new workorder
+                {
+                    ValidateWorkorderRecords(mobileContent, true);
+                    _logger.LogInformation("NEW WORKORDER");
+                    addNewWorkorder = AddNewWorkOrder(mobileContent, false);
+                }
+                else // exists
+                {
+                    List<Models.WorkorderDto> workOrders = CompanyUtility.GetWorkorders(mobileContent.WoNumber, _connectionString, false);
+                    Models.WorkorderDto syncDbWorkorder = workOrders[0];
+
+                    bool unassignedWorkorder;
+                    CompanyUtility.GetWorkorderDetails(mobileContent.WoNumber, _connectionString, out unassignedWorkorder);
+
+                    //un-assigned (created by the enterprise) or re-assigned add new record and add '-R'
+                    if ((_mobileUserId != syncDbWorkorder.AssignedToUserId) && (mobileContent.WoMobStatusId != 2) && 
+                        ((syncDbWorkorder.WoMobStatusId != 2) || (unassignedWorkorder == true))) 
+                    {
+                        _logger.LogInformation((unassignedWorkorder) ? "UN-ASSIGNED" : "RE-ASSIGNED");
+                        ValidateWorkorderRecords(mobileContent, true);
+                        addNewWorkorder = AddNewWorkOrder(mobileContent, true); // re-assigned or un-assigned
+                    }
+                    else // update existing record
+                    {
+                        ValidateWorkorderRecords(mobileContent, false);
+                        _logger.LogInformation("UPDATE EXISTING RECORD");
+                        CompareWorkOrder(syncDbWorkorder, mobileContent);
+                    }
+                }
+
+                _sbInfo.AppendLine(Environment.NewLine + "Success" + Environment.NewLine);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation($"Error while executing " + spName + ": " + ex.Message);
+                _sbInfo.AppendLine(Environment.NewLine + "ERROR THROWN: " + ex.Message);
+                SyncCodeFailure failureCode = new SyncCodeFailure();
+                failureCode.Code = -1;
+                failureCode.Description = ex.Message.StartsWith("Error:") ? ex.Message : "Error: " + ex.Message;
+                return Ok(failureCode);
+            }
+            finally
+            {
+#if AddlLogging
+                if (fileName.Length > 0 && _baseScriptPath != null)
+                    System.IO.File.WriteAllText(Path.Combine(_baseScriptPath, fileName), _sbInfo.ToString());
+#endif
+            }
+
+            _logger.LogInformation($"{functionName}, Return 200 OK" + Environment.NewLine);
+
+            if (addNewWorkorder && _workOrderId > 0)
+            {
+                SyncCodeNew newWO = new SyncCodeNew();
+                newWO.Code = 0;
+                newWO.WorkorderId = _workOrderId;
+                return Ok(newWO);
+            }
+            else
+                return Ok(new { Code = 0 });
+        }
+
+        private void CompareWorkOrder(WorkorderDto workOrder, WorkorderDto content)
+        {
+            string functionName = "CompareWorkOrder";
+            _logger.LogInformation($" *In {functionName}");
+            _logger.LogInformation($" *In CompanyUtility.GetWorkOrders, content.WoNumber = {content.WoNumber}");
+#if AddlLogging
+            CompanyUtility.WriteWorkorderToFile(content, _baseScriptPath, $"-{content.WoNumber}b");
+            CompanyUtility.WriteWorkorderToFile(workOrder, _baseScriptPath, $"-{workOrder.WoNumber}a");          
+#endif
+            CompareRecordValues(workOrder, content, (int)_arrayList.WorkOrder);
+            if (content.WoLaborLines.Count > 0)
+                CompareRecordValues(workOrder, content, (int)_arrayList.WoLaborLines);
+            if (content.WoMaterialLines.Count > 0)
+                CompareRecordValues(workOrder, content, (int)_arrayList.WoMaterialLines);
+            if (workOrder.WoNotes.Count > 0) // delete any notes that no longer exist
+                DeleteWoNotes(workOrder.WoNotes, content.WoNotes);
+            if (content.WoNotes.Count > 0)
+                CompareRecordValues(workOrder, content, (int)_arrayList.WoNotes);
+
+            _logger.LogInformation($" *In {functionName}");
+            if (_sbScript.Count > 0) // execute update scripts
+            {
+                _sbInfo.AppendLine(Environment.NewLine + "********************* UPDATE SCRIPT(s) **********************");
+                BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+                foreach (string script in _sbScript)
+                {
+                    _sbInfo.AppendLine(Environment.NewLine + script);
+                    int rowsAffected = baseDb.CreateCommand(script);
+                    _sbInfo.AppendLine($"({rowsAffected} row(s) affected)");
+                }
+            }
+#if AddlLogging
+            List<Models.WorkorderDto> workOrders = CompanyUtility.GetWorkorders(content.WoNumber, _connectionString, false);
+            CompanyUtility.WriteWorkorderToFile(workOrders[0], _baseScriptPath, $"-{content.WoNumber}c");
+#endif
+        }
+
+        private List<string> GetValidWoJSONColumnNames()
+        {
+            return new List<string>(new string[] { "WoDesc", "WoInstructions", "EquipNumber", "MobDevUserId",
+                "WoMobStatusId", "WoSequence", "PriorityId", "MachineStateId", "EquipLocId", "DateRequired", "StartDate",
+                "CauseCode", "RepairCode", "SymptomCode", "RequestedBy", "TradeId", "CompletedDate",
+                "AssignedToUserId", "AssignedDate", "ModifiedDate", "EnterpriseWoNum", "RefWoNum", "WoTypeId", "CreatedDate",
+                "OrigAssignedTo", "DTAssignmentChanged", "MobDispSeq" });
+        }
+
+        private List<string> GetValidActualTimesJSONColumnNames()
+        {
+            return new List<string>(new string[] { "WorkDate", "EmpNum", "StartTime", "EndTime", "ElapsedTime", "Hours",
+                "MobDispSeq", "RecLocked" });
+        }
+
+        private void CompareRecordValues(WorkorderDto workOrder, WorkorderDto content, int arrayNdx)
+        {
+            string functionName = "CompareRecordValues";
+            string arrayName = ((_arrayList)arrayNdx).ToString();
+            _logger.LogInformation($" *In {functionName}, array = {arrayName}");
+            StringBuilder sbTemp, sbSkipList;
+            int firstPad = 22, secondPad = 30, recordsToInsert = 0;
+            string sectionName;
+            int iCount, jCount;
+            List<string> validJSONColumnNames;
+            List<string> skipList;
+            bool reDisplayHeader = false;
+            GetBaseArrayInfo(out iCount, out jCount, workOrder, content, out sectionName, out validJSONColumnNames, out skipList, arrayNdx);
+            _sbInfo.AppendLine(sectionName);
+
+            for (int i = 0; i < iCount; i++)
+            {
+                bool foundMatch = false;
+                for (int j = 0; j < jCount; j++)
+                {
+                    if (reDisplayHeader)
+                    {
+                        _sbInfo.AppendLine(sectionName);
+                        reDisplayHeader = false;
+                    }
+                    int recordId = 0;
+                    string tableName, recordCol;
+                    if (CompareRecordIds(workOrder, content, i, j, ref recordId, out tableName, out recordCol, arrayNdx))
+                    {
+                        foundMatch = true;
+                        sbTemp = new StringBuilder();
+                        sbSkipList = new StringBuilder();
+                        List<Variance> list = GetVarianceList(workOrder, content, i, j, arrayNdx);
+                        int k = 0;
+                        foreach (Variance var in list)
+                        {
+                            string name = var.Prop;
+                            FormatPropertyName(ref name);
+                            if (validJSONColumnNames.Contains(name) == false)
+                            {
+                                if (skipList.Contains(name) == false)
+                                    sbSkipList.Append(name + ", ");
+                                continue;
+                            }
+
+                            if (name.Contains("Date") || (name == "DTAssignmentChanged" && arrayNdx == (int)_arrayList.WorkOrder))
+                            {
+                                string firstValue = var.valB.ToString();
+                                string secondValue = var.valA.ToString();
+                                if (firstValue == secondValue + "T0:00:00" || firstValue == secondValue + "T00:00:00") // see if new value is missing the time element
+                                    continue;
+                            }
+                            if (arrayNdx == (int)_arrayList.WoNotes)
+                            {
+                                if (content.WoNotes[i].NoteLinkedToRecType == "E" || content.WoNotes[i].NoteTags == "Report-Symptom" || 
+                                    content.WoNotes[i].NoteTags == "Report-Cause" || content.WoNotes[i].NoteTags == "Report-Action") // Enterprise-origination note 
+                                    continue;
+                            }
+                            if (arrayNdx == (int)_arrayList.WorkOrder && name == "MobDispSeq")
+                            {
+                                if (content.AssignedToUserId < 0) // for workorder ignore the MobDispSeq if the workorder is assigned to the pool
+                                    continue;
+                            }
+
+                            string dbColName = GetDbColumnName(name, arrayNdx);
+                            if (k == 0)
+                            {
+                                if (arrayNdx == (int)_arrayList.WorkOrder)
+                                    _sbInfo.AppendLine(ZeroPad($"FIELD", firstPad) + ZeroPad("EXISTING VALUE", secondPad) + "NEW VALUE");
+                                else
+                                    _sbInfo.AppendLine(ZeroPad($"FIELD (RecordId: {recordId})", firstPad) + ZeroPad("EXISTING VALUE", secondPad) + "NEW VALUE");
+                            }
+                            _sbInfo.AppendLine(FormatDisplayDifferences(name, firstPad, var, secondPad));
+                            sbTemp.AppendLine(FormatSetString(var, dbColName, arrayNdx));
+                            k++;
+                        }
+                        if (arrayNdx == (int)_arrayList.WorkOrder)
+                            CompareWoHeaderNotes(sbTemp, workOrder, content);
+                        if (sbTemp.Length > 0)
+                        {
+                            _sbInfo.AppendLine();
+                            SetUpdateScript(sbTemp, tableName, recordCol, recordId, arrayNdx);
+                        }
+                        else
+                        {
+                            if (arrayNdx == (int)_arrayList.WorkOrder)
+                                _sbInfo.AppendLine($" *no records to update for main Workorder: {workOrder.WoNumber}");
+                            else
+                                _sbInfo.AppendLine($" *no records to update for RecordID: {recordId}");
+                        }
+
+                        if (sbSkipList.Length > 3)
+                        {
+                            sbSkipList.Length = sbSkipList.Length - 2;
+                            _sbInfo.AppendLine(Environment.NewLine + "SKIPPED FIELDS: " + Environment.NewLine + sbSkipList.ToString());
+                        }
+
+                        // WoActualTimeLines
+                        if (arrayNdx == (int)_arrayList.WoLaborLines && content.WoLaborLines[i].WoActualTimeLines.Count > 0)
+                        {
+                            int laborIdentity = CompanyUtility.LookupWoLabourId(_workOrderId, recordId, _connectionString);
+
+                            // delete any Actual Time records that no longer exist
+                            DeleteActualTime(laborIdentity, workOrder.WoLaborLines[j].WoActualTimeLines, content.WoLaborLines[i].WoActualTimeLines);
+
+                            CompareActualTimeLines(workOrder.WoLaborLines[j].WoActualTimeLines, content.WoLaborLines[i].WoActualTimeLines,
+                                recordId, laborIdentity, (int)_arrayList.WoActualTimeLines);
+                            reDisplayHeader = true; // since escaped into other method - when coming back re-display section header
+                        }
+
+                        break;
+                    }
+                }
+                if (foundMatch == false)
+                {
+                    recordsToInsert++;
+                    int identity = AddNewRecord(content, i, arrayNdx);
+                    if (arrayNdx == (int)_arrayList.WoLaborLines && content.WoLaborLines[i].WoActualTimeLines.Count > 0)
+                    {
+                        _sbInfo.AppendLine(Environment.NewLine + $"******** WoActualTimeLines (WoLaborLines Record: {identity}) ********");
+                        for (int m = 0; m < content.WoLaborLines[i].WoActualTimeLines.Count; m++)
+                            AddNewActualTimesRecord(content.WoLaborLines[i].WoActualTimeLines[m], identity);
+
+                        reDisplayHeader = true;
+                    }
+                }
+            }
+        }
+
+        private void CompareWoHeaderNotes(StringBuilder sbTemp, WorkorderDto workOrder, WorkorderDto content)
+        {
+            string functionName = "CompareWoHeaderNotes";
+            _logger.LogInformation($" *In {functionName}");
+            int iCount, jCount;
+            List<string> validJSONColumnNames;
+            List<string> skipList;
+            int firstPad = 22, secondPad = 30;
+            string sectionName;
+            int arrayNdx = (int)_arrayList.WoNotes;
+            GetBaseArrayInfo(out iCount, out jCount, workOrder, content, out sectionName, out validJSONColumnNames, out skipList, arrayNdx);
+            for (int i = 0; i < iCount; i++)
+            {
+                //bool foundMatch = false;
+                for (int j = 0; j < jCount; j++)
+                {
+                    if (workOrder.WoNotes[i].NoteTags == content.WoNotes[j].NoteTags)
+                    {
+                        if (content.WoNotes[i].NoteLinkedToRecType == "E" || content.WoNotes[i].NoteTags == "Report-Other")
+                            continue;
+
+                        List<Variance> list = GetVarianceList(workOrder, content, i, j, arrayNdx);
+                        foreach (Variance var in list)
+                        {
+                            if (var.Prop.Contains("NoteText") && 
+                                (content.WoNotes[i].NoteTags == "Report-Symptom" || content.WoNotes[i].NoteTags == "Report-Cause" || content.WoNotes[i].NoteTags == "Report-Action"))
+                            {
+                                string name = var.Prop;
+                                FormatPropertyName(ref name);
+                                name = content.WoNotes[i].NoteTags.Replace("Report-", ""); 
+                                string dbColName = "[" + name + "]"; // GetDbColumnName(name, arrayNdx);
+                                if (sbTemp.Length == 0)
+                                    _sbInfo.AppendLine(ZeroPad($"FIELD", firstPad) + ZeroPad("EXISTING VALUE", secondPad) + "NEW VALUE");
+
+                                _sbInfo.AppendLine(FormatDisplayDifferences(name, firstPad, var, secondPad));
+                                sbTemp.AppendLine(FormatSetString(var, dbColName, arrayNdx));
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void SetUpdateScript(StringBuilder sbTemp, string tableName, string recordCol, int recordId, int arrayNdx, int laborId = 0)
+        {
+            string additional;
+            if (arrayNdx == (int)_arrayList.WoActualTimeLines)
+                additional = $" AND [WOLabourID] = {laborId}";
+            else if (arrayNdx == (int)_arrayList.WorkOrder)
+                additional = string.Empty;
+            else
+                additional = $" AND [WorkOrderID] = {_workOrderId}";
+
+            StringBuilder sbLocalScript = new StringBuilder();
+            sbLocalScript.AppendLine("UPDATE" + Environment.NewLine + $"  [{tableName}]" + Environment.NewLine + "SET");
+            sbLocalScript.Append(sbTemp.ToString());
+            sbLocalScript.Length = sbLocalScript.Length - Environment.NewLine.Length - 1;
+            sbLocalScript.Append(Environment.NewLine + "WHERE" + Environment.NewLine + $"  [{recordCol}] = {recordId}");
+            sbLocalScript.AppendLine(additional);
+            _sbScript.Add(sbLocalScript.ToString());
+        }
+
+        private int AddNewRecord(WorkorderDto content, int i, int arrayNdx)
+        {
+            int identityColVal = 0;
+            if (arrayNdx == (int)_arrayList.WoLaborLines)
+                identityColVal = AddNewLaborLinesRecord(content.WoLaborLines[i]);
+            else if (arrayNdx == (int)_arrayList.WoMaterialLines)
+                identityColVal = AddNewMaterialLinesRecord(content.WoMaterialLines[i]);
+            else if (arrayNdx == (int)_arrayList.WoNotes)
+                identityColVal = AddNewNotesRecord(content.WoNotes[i]);
+
+            return identityColVal;
+        }
+
+        private void CompareActualTimeLines(List<WoActualTimeDto> woActualTimeLines, List<WoActualTimeDto> contentActualTimeLines,
+            int laborId, int woLabourID, int arrayNdx)
+        {
+            string functionName = "CompareActualTimeLines";
+            string arrayName = ((_arrayList)arrayNdx).ToString();
+            _logger.LogInformation($" *In {functionName}, array = {arrayName}");
+            StringBuilder sbTemp, sbSkipList;
+            int firstPad = 22, secondPad = 30, recordsToInsert = 0;
+            List<string> validColumnNames = GetValidActualTimesJSONColumnNames();
+            _sbInfo.AppendLine(Environment.NewLine + $"********* WoActualTimeLines (WoLaborLines Record: {laborId}) ********");
+
+            for (int i = 0; i < contentActualTimeLines.Count; i++)
+            {
+                bool foundMatch = false;
+                for (int j = 0; j < woActualTimeLines.Count; j++)
+                {
+                    if (contentActualTimeLines[i].MobLineId == woActualTimeLines[j].MobLineId)
+                    {
+                        foundMatch = true;
+                        int recordId = contentActualTimeLines[i].MobLineId;
+                        sbTemp = new StringBuilder();
+                        sbSkipList = new StringBuilder();
+                        List<Variance> list = contentActualTimeLines[i].DetailedCompare(woActualTimeLines[j]);
+                        int k = 0;
+                        foreach (Variance var in list)
+                        {
+                            string name = var.Prop;
+                            FormatPropertyName(ref name);
+                            if (validColumnNames.Contains(name) == false)
+                            {
+                                sbSkipList.Append(name + ", ");
+                                continue;
+                            }
+
+                            if (name.Contains("Date"))
+                            {
+                                string firstValue = var.valB.ToString();
+                                string secondValue = var.valA.ToString();
+                                if (firstValue == secondValue + "T0:00:00" || firstValue == secondValue + "T00:00:00") // see if new value is missing the time element
+                                    continue;
+                            }
+
+                            string dbColName = GetDbColumnName(name, arrayNdx);
+                            if (k == 0)
+                                _sbInfo.AppendLine(ZeroPad($"FIELD (RecordId: {recordId})", firstPad) + ZeroPad("EXISTING VALUE", secondPad) + "NEW VALUE");
+                            _sbInfo.AppendLine(FormatDisplayDifferences(name, firstPad, var, secondPad));
+                            sbTemp.AppendLine(FormatSetString(var, dbColName, arrayNdx));
+                            k++;
+                        }
+                        if (sbTemp.Length > 0)
+                        {
+                            _sbInfo.AppendLine();
+                            SetUpdateScript(sbTemp, "WOActualTime", "MobLineId", recordId, arrayNdx, woLabourID);
+                        }
+                        else
+                            _sbInfo.AppendLine($" *no records to update for RecordID: {recordId}");
+
+                        if (sbSkipList.Length > 3)
+                        {
+                            sbSkipList.Length = sbSkipList.Length - 2;
+                            _sbInfo.AppendLine(Environment.NewLine + "SKIPPED FIELDS: " + Environment.NewLine + sbSkipList.ToString());
+                        }
+                        break;
+                    }
+                }
+                if (foundMatch == false)
+                {
+                    recordsToInsert++;
+                    AddNewActualTimesRecord(contentActualTimeLines[i], woLabourID);
+                }
+            }
+            _logger.LogInformation(" *In CompareRecordValues");
+        }
+
+        private List<Variance> GetVarianceList(WorkorderDto workOrder, WorkorderDto content, int i, int j, int arrayNdx)
+        {
+            if (arrayNdx == (int)_arrayList.WorkOrder)
+                return content.DetailedCompare(workOrder);
+            else if (arrayNdx == (int)_arrayList.WoLaborLines)
+                return content.WoLaborLines[i].DetailedCompare(workOrder.WoLaborLines[j]);
+            else if (arrayNdx == (int)_arrayList.WoMaterialLines)
+                return content.WoMaterialLines[i].DetailedCompare(workOrder.WoMaterialLines[j]);
+            else if (arrayNdx == (int)_arrayList.WoNotes)
+                return content.WoNotes[i].DetailedCompare(workOrder.WoNotes[j]);
+
+            return null;
+        }
+
+        private bool CompareRecordIds(WorkorderDto workOrder, WorkorderDto content, int i, int j, ref int recordId,
+            out string tableName, out string recordCol, int arrayNdx)
+        {
+            tableName = recordCol = string.Empty;
+            if (arrayNdx == (int)_arrayList.WorkOrder)
+            {
+                recordId = _workOrderId;
+                tableName = "WorkOrder";
+                recordCol = "WorkOrderID";
+                return true;
+            }
+            else if (arrayNdx == (int)_arrayList.WoLaborLines)
+            {
+                if (content.WoLaborLines[i].MobLineId == workOrder.WoLaborLines[j].MobLineId)
+                {
+                    recordId = content.WoLaborLines[i].MobLineId;
+                    tableName = "WOLabour";
+                    recordCol = "MobLineId";
+                    return true;
+                }
+            }
+            else if (arrayNdx == (int)_arrayList.WoMaterialLines)
+            {
+                if (content.WoMaterialLines[i].MobLineId == workOrder.WoMaterialLines[j].MobLineId)
+                {
+                    recordId = content.WoMaterialLines[i].MobLineId;
+                    tableName = "WOMaterial";
+                    recordCol = "MobLineId";
+                    return true;
+                }
+            }
+            else if (arrayNdx == (int)_arrayList.WoNotes)
+            {
+                if (content.WoNotes[i].MobLineId == workOrder.WoNotes[j].MobLineId)
+                {
+                    recordId = content.WoNotes[i].MobLineId;
+                    tableName = "WONotes";
+                    recordCol = "MobLineId";
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void GetBaseArrayInfo(out int iCount, out int jCount, WorkorderDto workOrder, WorkorderDto content, 
+            out string sectionName, out List<string> validJSONColumnNames, out List<string> skipList, int arrayNdx)
+        {
+            iCount = jCount = 0;
+            sectionName = string.Empty;
+            validJSONColumnNames = null;
+            skipList = new List<string>(new string[] { "WoLaborLines", "WoMaterialLines", "WoNotes", "WoAttachFiles", "WoActualTimeLines" });
+            if (arrayNdx == (int)_arrayList.WorkOrder)
+            {
+                sectionName = $"************************* Workorder *************************";
+                iCount = jCount = 1;
+                validJSONColumnNames = GetValidWoJSONColumnNames();
+            }
+            else if (arrayNdx == (int)_arrayList.WoLaborLines)
+            {
+                sectionName = Environment.NewLine + "*********************** WoLaborLines ************************";
+                iCount = content.WoLaborLines.Count;
+                jCount = workOrder.WoLaborLines.Count;
+                validJSONColumnNames = new List<string>(new string[] { "TradeId", "Description", "EstTime", "AccumTime",
+                    "StepSeqNum", "StartDateTime", "CompletedDateTime", "EmpNum", "MobDispSeq", "RecLocked" });
+            }
+            else if (arrayNdx == (int)_arrayList.WoMaterialLines)
+            {
+                sectionName = Environment.NewLine + "********************* WoMaterialLines ***********************";
+                iCount = content.WoMaterialLines.Count;
+                jCount = workOrder.WoMaterialLines.Count;
+                validJSONColumnNames = new List<string>(new string[] { "SkuCode", "SkuDescription",
+                    "SkuCategory", "EstQty", "ActualQty", "Source", "SupplierCode", "SupplierName", "Warehouse", "Bin",
+                    "StagingLocation", "UsageDate", "EmpNum", "PurchPrice", "UnitOfMeasure", "MobDispSeq",
+                    "RecLocked", "AcquisitionMethodCode", "AcquisitionMethodDesc", "AcquisitionInfo", "QtyPickedUp",
+                    "QtyUsed" });
+            }
+            else if (arrayNdx == (int)_arrayList.WoNotes)
+            {
+                sectionName = Environment.NewLine + "************************** WoNotes **************************";
+                iCount = content.WoNotes.Count;
+                jCount = workOrder.WoNotes.Count;
+                validJSONColumnNames = new List<string>(new string[] { "NoteLinkedToRecType", "NoteLinkedToRecId",
+                    "NoteTags", "NotePriority", "NoteText", "UserId", "CreatedDateTime", "MobDispSeq" });
+            }
+        }
+
+        private int AddNewActualTimesRecord(WoActualTimeDto woContent, int woLabourID)
+        {
+            string functionName = "AddNewActualTimesRecord";
+            string spName = "InsertWoActualTimes";
+            int employeeId = GetEmployeeID(woContent.EmpNum);
+            int actualTimeIdentity = 0, returnValue = 0;
+            _logger.LogInformation($" *In {functionName}");
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameterOut("@ActualTimeIdentity", System.Data.SqlDbType.Int, actualTimeIdentity));
+            parameterList.Add(baseDb.GetParameter("@WOLabourID ", Utility.ConfirmIntOrZero(woLabourID), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@EmpID", employeeId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@WorkDate", Utility.FormatDateForInsert(woContent.WorkDate), SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@StartTime", woContent.StartTime, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@EndTime", woContent.EndTime, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@ElapsedTime", woContent.ElapsedTime, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@Hours", Utility.ConfirmDecimalOrZero(woContent.Hours), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@MobLineId", Utility.ConfirmIntOrZero(woContent.MobLineId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@MobDispSeq", woContent.MobDispSeq, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@RecLocked", Utility.ConfirmBool(woContent.RecLocked), SqlDbType.Bit));
+
+            if (baseDb.ExecuteNonQuery(spName, parameterList) >= 0)
+            {
+                returnValue = (int)parameterList[0].Value;
+                _sbInfo.AppendLine(Environment.NewLine + $"1 new record successfully inserted into WoActualTimeLines - Internal RecordId: {returnValue}" + Environment.NewLine);
+            }
+            else
+                _sbInfo.AppendLine(Environment.NewLine + "ERROR inserting record into WoActualTimeLines");
+
+            return returnValue;
+        }
+
+        private int AddNewLaborLinesRecord(WoLaborLinesDto woContent)
+        {
+            string functionName = "AddNewLaborLinesRecord";
+            string spName = "InsertWoLabour";
+            int employeeId = GetEmployeeID(woContent.EmpNum);
+            int laborIdentity = 0, returnValue = 0;
+            _logger.LogInformation($" *In {functionName}");
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameterOut("@LabourIdentity", System.Data.SqlDbType.Int, laborIdentity));
+            parameterList.Add(baseDb.GetParameter("@WorkOrderID", _workOrderId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@EntWO_ID", 0, SqlDbType.Int)); // insert 0
+            parameterList.Add(baseDb.GetParameter("@TradeId", Utility.ConfirmIntOrZero(woContent.TradeId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@EstTime", Utility.ConfirmDecimalOrZero(woContent.EstTime), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@AccumTime", Utility.ConfirmDecimalOrZero(woContent.AccumTime), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@StepSeqNum", Utility.ConfirmDecimalOrZero(woContent.StepSeqNum), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@StartDateTime", Utility.FormatDateForInsert(woContent.StartDateTime), SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@CompletedDateTime", Utility.FormatDateForInsert(woContent.CompletedDateTime), SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@EmpID", employeeId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@MobLineId", Utility.ConfirmIntOrZero(woContent.MobLineId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@MobDispSeq", woContent.MobDispSeq, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@RecLocked", Utility.ConfirmBool(woContent.RecLocked), SqlDbType.Bit));
+
+            if (baseDb.ExecuteNonQuery(spName, parameterList) >= 0)
+            {
+                returnValue = (int)parameterList[0].Value;
+                _sbInfo.AppendLine(Environment.NewLine + $"1 new record successfully inserted into WoLaborLines - Internal RecordId: {returnValue}" + Environment.NewLine);
+            }
+            else
+                _sbInfo.AppendLine(Environment.NewLine + "ERROR inserting record into WoLaborLines");
+
+            return returnValue;
+        }
+
+        private int AddNewMaterialLinesRecord(WoMaterialLinesDto woContent)
+        {
+            string functionName = "AddNewMaterialLinesRecord";
+            _logger.LogInformation($" *In {functionName}");
+            int employeeId = GetEmployeeID(woContent.EmpNum);
+            string spName = "InsertWoMaterialLines";
+            int materialLinesIdentity = 0, returnValue = 0, inventoryId;
+            inventoryId = GetInventoryId(woContent.SkuCode); // get inventoryId from Catalog table
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameterOut("@MaterialLinesIdentity", System.Data.SqlDbType.Int, materialLinesIdentity));
+            parameterList.Add(baseDb.GetParameter("@WorkOrderID", _workOrderId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@EntWO_ID", 0, SqlDbType.Int)); // insert 0
+            parameterList.Add(baseDb.GetParameter("@InvID", inventoryId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@Code", woContent.SkuCode, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@Description", woContent.SkuDescription, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@Category", CompanyUtility.ReverseMapCategory(woContent.SkuCategory), SqlDbType.TinyInt)); 
+            parameterList.Add(baseDb.GetParameter("@EstQty", Utility.ConfirmDecimalOrZero(woContent.EstQty), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@ActualQty", Utility.ConfirmDecimalOrZero(woContent.ActualQty), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@QtyPickedUp", Utility.ConfirmDecimalOrZero(woContent.QtyPickedUp), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@QtyUsed", Utility.ConfirmDecimalOrZero(woContent.QtyUsed), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@Source", woContent.Source, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@AcquisitionMethodCode", woContent.AcquisitionMethodCode, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@AcquisitionMethodDesc", woContent.AcquisitionMethodDesc, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@AcquisitionInfo", woContent.AcquisitionInfo, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@SupplierNum", woContent.SupplierCode, SqlDbType.VarChar)); 
+            parameterList.Add(baseDb.GetParameter("@SupplierName", woContent.SupplierName, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@Warehouse", woContent.Warehouse, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@Bin", woContent.Bin, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@StagingLocation", woContent.StagingLocation, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@UsageDate", Utility.FormatDateForInsert(woContent.UsageDate), SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@EmpID", Utility.ConfirmIntOrZero(employeeId), SqlDbType.VarChar)); 
+            parameterList.Add(baseDb.GetParameter("@Price", Utility.ConfirmDecimalOrZero(woContent.PurchPrice), SqlDbType.Decimal));
+            parameterList.Add(baseDb.GetParameter("@MeasUnit", woContent.UnitOfMeasure, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@MobLineId", Utility.ConfirmIntOrZero(woContent.MobLineId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@MobDispSeq", woContent.MobDispSeq, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@RecLocked", Utility.ConfirmBool(woContent.RecLocked), SqlDbType.Bit));
+            parameterList.Add(baseDb.GetParameter("@Wo_MatID", null, SqlDbType.Int)); // Utility.ConfirmIntOrZero(woContent.EntMatLineId)
+
+            if (baseDb.ExecuteNonQuery(spName, parameterList) >= 0)
+            {
+                returnValue = (int)parameterList[0].Value;
+                _sbInfo.AppendLine(Environment.NewLine + $"1 new record successfully inserted into WoMaterialLines - Internal RecordId: {returnValue}" + Environment.NewLine);
+            }
+            else
+                _sbInfo.AppendLine(Environment.NewLine + "ERROR inserting record into WoMaterialLines");
+
+            return returnValue;
+        }
+
+        private int AddNewNotesRecord(WoNotesDto woContent)
+        {
+            string functionName = "AddNewNotesRecord";
+            string spName = "InsertWoNotes";
+            int notesIdentity = 0, returnValue = 0;
+            _logger.LogInformation($" *In {functionName}");
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameterOut("@NotesIdentity", System.Data.SqlDbType.Int, notesIdentity));
+            parameterList.Add(baseDb.GetParameter("@WorkOrderID", _workOrderId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@NoteLinkedToRecType", woContent.NoteLinkedToRecType, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@NoteLinkedToRecID", Utility.ConfirmIntOrZero(woContent.NoteLinkedToRecId), SqlDbType.Int));
+            //parameterList.Add(baseDb.GetParameter("@NoteSeq", Utility.ConfirmIntOrZero(woContent.NoteSeq)));
+            parameterList.Add(baseDb.GetParameter("@NoteTags", woContent.NoteTags, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@NotePriority", Utility.ConfirmBool(woContent.NotePriority), SqlDbType.Bit));
+            parameterList.Add(baseDb.GetParameter("@Note", woContent.NoteText, SqlDbType.Text));
+            parameterList.Add(baseDb.GetParameter("@UserID", Utility.ConfirmIntOrZero(woContent.UserId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@CreatedDate", Utility.FormatDateForInsert(woContent.CreatedDateTime), SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@MobLineId", Utility.ConfirmIntOrZero(woContent.MobLineId), SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@MobDispSeq", woContent.MobDispSeq, SqlDbType.VarChar));
+
+            if (baseDb.ExecuteNonQuery(spName, parameterList) >= 0)
+            {
+                returnValue = (int)parameterList[0].Value;
+                _sbInfo.AppendLine(Environment.NewLine + $"1 new record successfully inserted into WoNotes - Internal RecordId: {returnValue}" + Environment.NewLine);
+            }
+            else
+                _sbInfo.AppendLine(Environment.NewLine + "ERROR inserting record into WoNotes");
+
+            return returnValue;
+        }
+
+        private void DeleteWoNotes(List<WoNotesDto> workorderNotes, List<WoNotesDto> contentNotes)
+        {
+            string baseScript = $"DELETE FROM WoNotes WHERE WorkOrderId = {_workOrderId} AND MobLineId = ";
+            foreach (WoNotesDto woNote in workorderNotes)
+            {
+                if (woNote.NoteLinkedToRecType == "E")
+                    continue;
+                if (woNote.NoteTags == "Report-Symptom" || woNote.NoteTags == "Report-Cause" || woNote.NoteTags == "Report-Action")
+                    continue;
+
+                bool found = false;
+                foreach (WoNotesDto contentNote in contentNotes)
+                {
+                    if (woNote.MobLineId == contentNote.MobLineId)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found == false)
+                {
+                    string script = baseScript + woNote.MobLineId.ToString();
+                    _sbScript.Add(script);
+                }
+            }
+        }
+
+        private void DeleteActualTime(int laborIdentity, List<WoActualTimeDto> workorderTimes, List<WoActualTimeDto> contentTimes)
+        {
+            //List<WoActualTimeDto> removeList = new List<WoActualTimeDto>();
+            bool recordsDeleted = false;
+            string baseScript = $"DELETE FROM [WOActualTime] WHERE WOLabourId = {laborIdentity} AND MobLineId = ";
+            for (int i = 0; i < workorderTimes.Count; i++)
+            {
+                WoActualTimeDto woTime = workorderTimes[i];
+                bool found = false;
+                foreach (WoActualTimeDto contentTime in contentTimes)
+                {
+                    if (woTime.MobLineId == contentTime.MobLineId)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found == false)
+                {
+                    string script = baseScript + woTime.MobLineId.ToString();
+                    _sbScript.Add(script);
+                    _sbInfo.AppendLine(Environment.NewLine + $"1 record scheduled for deletion from WOActualTime - RecordId: {woTime.MobLineId}");
+                    recordsDeleted = true;
+                    //removeList.Add(woTime);
+                }
+            }
+            if (recordsDeleted)
+                _sbInfo.AppendLine();
+           // foreach (WoActualTimeDto woTime in removeList)
+                //workorderTimes.Remove(woTime);
+        }
+
+        private string GetDbColumnName(string jsonName, int arrayNdx)
+        {
+            string spName = "GetWoColumnName";
+            string columnName;
+            string tableName = string.Empty;
+            if (arrayNdx == (int)_arrayList.WorkOrder)
+                tableName = "Workorder";
+            else if (arrayNdx == (int)_arrayList.WoLaborLines)
+                tableName = "WOLabor";
+            else if (arrayNdx == (int)_arrayList.WoActualTimeLines)
+                tableName = "WOActualTime";
+            else if (arrayNdx == (int)_arrayList.WoMaterialLines)
+                tableName = "WOMaterial";
+            else if (arrayNdx == (int)_arrayList.WoNotes)
+                tableName = "WONotes";
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameter("@TableName", tableName, SqlDbType.VarChar));
+            parameterList.Add(baseDb.GetParameter("@JSONName", jsonName, SqlDbType.VarChar));
+            using (SqlDataReader dr = baseDb.GetDataReader(spName, parameterList))
+            {
+                if (dr.Read())
+                    columnName = "[" + dr["ColumnName"].ToString() + "]";
+                else
+                    columnName = "[" + jsonName + "]";
+            }
+
+            return columnName;
+        }
+
+        private bool AddNewWorkOrder(WorkorderDto woContent, bool reAssignedUnAssigned)
+        {
+#if AddlLogging
+            string woNum = reAssignedUnAssigned ? woContent.WoNumber + "-R" : woContent.WoNumber;
+            CompanyUtility.WriteWorkorderToFile(woContent, _baseScriptPath, $"-{woContent.WoNumber}b");
+#endif
+            InsertNewWorkOrder(woContent, reAssignedUnAssigned);
+            foreach (WoLaborLinesDto laborLines in woContent.WoLaborLines)
+            {
+                int woLabourID = AddNewLaborLinesRecord(laborLines);
+                foreach (WoActualTimeDto actualTimes in laborLines.WoActualTimeLines)
+                    AddNewActualTimesRecord(actualTimes, woLabourID);
+            }
+            foreach (WoMaterialLinesDto materialLines in woContent.WoMaterialLines)
+                AddNewMaterialLinesRecord(materialLines);
+            foreach (WoNotesDto notes in woContent.WoNotes)
+                AddNewNotesRecord(notes);
+
+            UpdatePrimaryOfflineWoSeqNum(woContent.WoNumber, reAssignedUnAssigned);
+
+            _sbInfo.AppendLine($"Added Workorder: {_workOrderId}");
+
+#if AddlLogging
+            bool ignoreMobileStatus = reAssignedUnAssigned ? true : false;
+            List<Models.WorkorderDto> workOrder = CompanyUtility.GetWorkorders(woNum, _connectionString, ignoreMobileStatus);
+            CompanyUtility.WriteWorkorderToFile(workOrder[0], _baseScriptPath, $"-{woNum}c");
+#endif
+            return true;
+        }
+
+        private void ValidateWorkorderRecords(WorkorderDto woContent, bool newWorkorder)
+        {
+            string temp = string.Empty;
+            ValidateWorkorder(woContent, newWorkorder);
+            List<int> validateList1 = new List<int>();
+            List<int> validateList2 = new List<int>();
+            foreach (WoLaborLinesDto laborLines in woContent.WoLaborLines)
+            {
+                ValidateLaborLines(laborLines, validateList1);
+                validateList2 = new List<int>();
+                foreach (WoActualTimeDto actualTimes in laborLines.WoActualTimeLines)
+                    ValidateActualTimes(actualTimes, validateList2);
+                if ((validateList2.Count != validateList2.Distinct().Count()))
+                {
+                    temp = CompanyUtility.CreateDuplicateIdList(validateList2);
+                    throw new Exception("Duplicate MobLineIds exist in WoActualTimeLines - Multiple Id(s): " + temp);
+                }
+            }
+            if (validateList1.Count != validateList1.Distinct().Count())
+            {
+                temp = CompanyUtility.CreateDuplicateIdList(validateList1);
+                throw new Exception("Duplicate MobLineIds exist in WoLaborLines - Multiple Id(s): " + temp);
+            }
+
+            validateList1 = new List<int>();
+            foreach (WoMaterialLinesDto materialLines in woContent.WoMaterialLines)
+                ValidateMaterialLines(materialLines, validateList1);
+            if (validateList1.Count != validateList1.Distinct().Count())
+            {
+                temp = CompanyUtility.CreateDuplicateIdList(validateList1);
+                throw new Exception("Duplicate MobLineIds exist in WoMaterialLines - Multiple Id(s): " + temp);
+            }
+
+            validateList1 = new List<int>();
+            foreach (WoNotesDto notes in woContent.WoNotes)
+                ValidateWoNotes(notes, validateList1, newWorkorder);
+            if (validateList1.Count != validateList1.Distinct().Count())
+            {
+                temp = CompanyUtility.CreateDuplicateIdList(validateList1);
+                throw new Exception("Duplicate MobLineIds exist in WoNotes - Multiple Id(s): " + temp);
+            }
+        }
+
+        private void ValidateWoNotes(WoNotesDto notes, List<int> validateList1, bool newWorkorder)
+        {
+            string workOrderType = "WoNotes";
+            if (Utility.ConfirmIntOrZero(notes.MobLineId) == 0 || string.IsNullOrEmpty(notes.MobDispSeq))
+                throw new Exception($"Error: {workOrderType} records must have valid MobLineId and MobDispSeq values");
+            if (string.IsNullOrEmpty(notes.NoteLinkedToRecType))
+                throw new Exception($"Error: {workOrderType} records must have a valid NoteLinkedToRecType");
+            if (string.IsNullOrEmpty(notes.NoteText))
+                throw new Exception($"Error: {workOrderType} records must have a valid NoteText");
+            if (newWorkorder)
+            {
+                if (notes.NoteLinkedToRecType == "E")
+                    throw new Exception($"Error: {workOrderType} records with NoteLinkedToRecType: 'E' are not allowed to be inserted");
+                if (string.IsNullOrEmpty(notes.CreatedDateTime))
+                    throw new Exception($"Error: {workOrderType} records must have a valid CreatedDateTime");
+            }
+            else
+            {
+                if (notes.NoteLinkedToRecType != "E" && notes.NoteTags == "Report-Other" && string.IsNullOrEmpty(notes.CreatedDateTime))
+                    throw new Exception($"Error: {workOrderType} records must have a valid CreatedDateTime");
+            }
+
+            validateList1.Add(notes.MobLineId);
+        }
+
+        private void ValidateMaterialLines(WoMaterialLinesDto materialLines, List<int> validateList1)
+        {
+            string workOrderType = "WoMaterialLines";
+            if (Utility.ConfirmIntOrZero(materialLines.MobLineId) == 0 || string.IsNullOrEmpty(materialLines.MobDispSeq))
+                throw new Exception($"Error: {workOrderType} records must have valid MobLineId and MobDispSeq values");
+            if (string.IsNullOrEmpty(materialLines.SkuDescription))
+                throw new Exception($"Error: {workOrderType} records must have a valid SkuDescription");
+
+            validateList1.Add(materialLines.MobLineId);
+        }
+
+        private void ValidateActualTimes(WoActualTimeDto actualTimes, List<int> validateList2)
+        {
+            string workOrderType = "WoActualTimeLines";
+            if (Utility.ConfirmIntOrZero(actualTimes.MobLineId) == 0 || string.IsNullOrEmpty(actualTimes.MobDispSeq))
+                throw new Exception($"Error: New {workOrderType} records must have valid MobLineId and MobDispSeq values");
+            //if (string.IsNullOrEmpty(actualTimes.EmpNum))
+            //    throw new Exception($"Error: {workOrderType} records must have a valid EmpNum");
+            if (string.IsNullOrEmpty(actualTimes.WorkDate))
+                throw new Exception($"Error: {workOrderType} records must have a valid WorkDate");
+
+            validateList2.Add(actualTimes.MobLineId);
+        }
+
+        private void ValidateLaborLines(WoLaborLinesDto laborLines, List<int> validateList1)
+        {
+            string workOrderType = "WoLaborLines";
+            if (Utility.ConfirmIntOrZero(laborLines.MobLineId) == 0 || string.IsNullOrEmpty(laborLines.MobDispSeq))
+                throw new Exception($"Error: {workOrderType} records must have valid MobLineId and MobDispSeq values");
+            if (Utility.ConfirmIntOrZero(laborLines.TradeId) == 0)
+                throw new Exception($"Error: {workOrderType} records must have a valid TradeId");
+            //if (string.IsNullOrEmpty(laborLines.EmpNum))
+            //    throw new Exception($"Error: {workOrderType} records must have a valid EmpNum");
+
+            validateList1.Add(laborLines.MobLineId);
+        }
+
+        private void ValidateWorkorder(WorkorderDto woContent, bool newWorkorder)
+        {
+            string workOrderType = "Workorder";
+            if (string.IsNullOrEmpty(woContent.WoNumber))
+                throw new Exception($"Error: {workOrderType} records must have a valid WoNumber");
+            if (string.IsNullOrEmpty(woContent.MobDispSeq) && woContent.AssignedToUserId > 0) 
+                throw new Exception($"Error: {workOrderType} records must have a valid MobDispSeq");
+            if (Utility.ConfirmIntOrZero(woContent.MobDevUserId) == 0)
+                throw new Exception($"Error: {workOrderType} records must have a valid MobDevUserId");
+            if (string.IsNullOrEmpty(woContent.WoDesc))
+                throw new Exception($"Error: {workOrderType} records must have a valid WoDesc");
+            if (string.IsNullOrEmpty(woContent.EquipNumber))
+                throw new Exception($"Error: {workOrderType} records must have a valid EquipNumber");
+
+            if (newWorkorder)
+            {
+                int primaryOfflineWoSeqNum = GetPrimaryOfflineWoSeqNum();
+                if (primaryOfflineWoSeqNum == 0)
+                    throw new Exception($"Error: {workOrderType} missing PrimaryOfflineWoSeqNum in database");
+                //if (woContent.WoNumber.Contains('-') == false)
+                //    throw new Exception($"Error: {workOrderType} invalid WoNumber");
+                //if (woContent.WoLaborLines.Count == 0)
+                //    throw new Exception($"Error: {workOrderType} records must have at least one labor record");
+                if (Utility.ConfirmIntOrZero(woContent.AssignedToUserId) <= 0)
+                    throw new Exception($"Error: {workOrderType} records must have a valid AssignedToUserId)");
+                if (Utility.ConfirmIntOrZero(woContent.WoMobStatusId) == 0)
+                    throw new Exception($"Error: {workOrderType} records must have a valid WoMobStatusId)");
+                if (string.IsNullOrEmpty(woContent.EquipNumber))
+                    throw new Exception($"Error: {workOrderType} records must have a valid EquipNumber)");
+            }
+        }
+
+        private void InsertNewWorkOrder(WorkorderDto woContent, bool reAssignedUnAssigned)
+        {
+            string functionName = "AddNewWorkOrder";
+            _logger.LogInformation($" *In {functionName}");
+            int equipmentId = GetEquipmentID(woContent.EquipNumber);
+            int modifiedById = GetModifiedById(woContent.MobDevUserId);
+            string spName = "InsertWorkorder";
+            int workorderIdentity = 0;
+            int tempMobileStatus = reAssignedUnAssigned ? 8 : Utility.ConfirmIntOrZero(woContent.WoMobStatusId);
+            string tempWoNumber = reAssignedUnAssigned ? woContent.WoNumber + "-R" : woContent.WoNumber;
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameterOut("@WorkorderIdentity", System.Data.SqlDbType.Int, workorderIdentity));
+            parameterList.Add(baseDb.GetParameter("@WO_Number", tempWoNumber, SqlDbType.VarChar)); //required
+            parameterList.Add(baseDb.GetParameter("@WO_Short_Desc", woContent.WoDesc, SqlDbType.VarChar)); //required 
+            parameterList.Add(baseDb.GetParameter("@WO_Long_Desc", null, SqlDbType.Text)); // woContent.WoInstructions)); //remove
+            parameterList.Add(baseDb.GetParameter("@EquipID", equipmentId, SqlDbType.Int)); //required
+            parameterList.Add(baseDb.GetParameter("@MobileDevUserID", Utility.ConfirmIntOrZero(woContent.MobDevUserId), SqlDbType.Int)); //required
+            parameterList.Add(baseDb.GetParameter("@Mobile_Status", tempMobileStatus, SqlDbType.Int)); //required
+            parameterList.Add(baseDb.GetParameter("@WOSequence", Utility.ConfirmDecimalOrZero(woContent.WoSequence), SqlDbType.Decimal)); // may have data
+            parameterList.Add(baseDb.GetParameter("@PriorityID", Utility.ConfirmIntOrZero(woContent.PriorityId), SqlDbType.Int)); //should have data
+            parameterList.Add(baseDb.GetParameter("@MachineStateID", Utility.ConfirmIntOrZero(woContent.MachineStateId), SqlDbType.Int)); // may have data
+            parameterList.Add(baseDb.GetParameter("@LocationID", Utility.ConfirmIntOrZero(woContent.EquipLocId), SqlDbType.Int)); // may have data
+            parameterList.Add(baseDb.GetParameter("@DateRequired", Utility.FormatDateForInsert(woContent.DateRequired), SqlDbType.VarChar)); // may have data
+            parameterList.Add(baseDb.GetParameter("@StartDate", Utility.FormatDateForInsert(woContent.StartDate), SqlDbType.VarChar)); //should have data
+            parameterList.Add(baseDb.GetParameter("@Symptom", null, SqlDbType.Text)); //woContent.SymptomNote)); //remove
+            parameterList.Add(baseDb.GetParameter("@Cause", null, SqlDbType.Text)); //woContent.CauseNote)); //remove
+            parameterList.Add(baseDb.GetParameter("@Action", null, SqlDbType.Text)); //woContent.ActionNote)); //remove
+            parameterList.Add(baseDb.GetParameter("@CauseCode", null, SqlDbType.VarChar)); //woContent.CauseCode)); //remove
+            parameterList.Add(baseDb.GetParameter("@RepairCode", null, SqlDbType.VarChar)); //woContent.RepairCode));  //remove
+            parameterList.Add(baseDb.GetParameter("@SymptomCode", null, SqlDbType.VarChar)); //woContent.SymptomCode)); //remove
+            parameterList.Add(baseDb.GetParameter("@RequestedBy", woContent.RequestedBy, SqlDbType.VarChar)); // may have data
+            parameterList.Add(baseDb.GetParameter("@TradeID", Utility.ConfirmIntOrZero(woContent.TradeId), SqlDbType.Int)); //required
+            parameterList.Add(baseDb.GetParameter("@CompletedDate", Utility.FormatDateForInsert(woContent.CompletedDate), SqlDbType.VarChar));// may have data
+            parameterList.Add(baseDb.GetParameter("@mWO_UserID", Utility.ConfirmIntOrZero(woContent.AssignedToUserId), SqlDbType.Int)); //required
+            parameterList.Add(baseDb.GetParameter("@AssignedDate", null, SqlDbType.DateTime)); //Utility.DateStringToDate(woContent.AssignedDate))); // remove
+            parameterList.Add(baseDb.GetParameter("@AssignedByID", _mobileUserId, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@ModifiedDate", null, SqlDbType.DateTime)); //Utility.DateStringToDate(woContent.ModifiedDate))); // remove
+            parameterList.Add(baseDb.GetParameter("@EntWONumber", null, SqlDbType.VarChar)); //woContent.EnterpriseWoNum)); // remove
+            parameterList.Add(baseDb.GetParameter("@ReferralWONumber", woContent.RefWoNum, SqlDbType.VarChar)); // may have data
+            parameterList.Add(baseDb.GetParameter("@WO_TypeID", Utility.ConfirmIntOrZero(woContent.WoTypeId), SqlDbType.Int)); //should have data
+            //parameterList.Add(baseDb.GetParameter("@CreatedDate", Utility.DateStringToDate(woContent.CreatedDate), SqlDbType.DateTime)); 
+            parameterList.Add(baseDb.GetParameter("@OrigAssignedTo", null, SqlDbType.Int)); //Utility.ConfirmIntOrZero(woContent.OrigAssignedTo))); // remove
+            parameterList.Add(baseDb.GetParameter("@DTAssignmentChanged", null, SqlDbType.DateTime)); //Utility.DateStringToDate(woContent.DTAssignmentChanged))); // remove
+            parameterList.Add(baseDb.GetParameter("@MESID", null, SqlDbType.Int)); // null for now
+            parameterList.Add(baseDb.GetParameter("@ModifiedbyID", null, SqlDbType.Int)); //modifiedById)); // remove
+            parameterList.Add(baseDb.GetParameter("@MobDispSeq", woContent.MobDispSeq, SqlDbType.VarChar)); //required
+
+            if (baseDb.ExecuteNonQuery(spName, parameterList) >= 0)
+            {
+                _workOrderId = (int)parameterList[0].Value;
+                _sbInfo.AppendLine(Environment.NewLine + $"1 new record successfully inserted into Workorder - Internal RecordId: {_workOrderId}" + Environment.NewLine);
+            }
+            else
+                throw new Exception("ERROR inserting record into Workorder");
+        }
+
+        private void UpdatePrimaryOfflineWoSeqNum(string woNumber, bool reAssignedUnAssigned)
+        {
+            // woNumber will be in this format: “M”<Emp#>”-”<OfflineWoNumber>, e.g., M158-10001 (where “M” implies “Mobile”).
+            if (ValidateAppWONumber(woNumber, reAssignedUnAssigned) == false)
+                return;
+
+            string functionName = "UpdatePrimaryOfflineWoSeqNum";
+            _logger.LogInformation($" *In {functionName}");
+            string spName = "UpdateMobileUser";
+            int index = woNumber.LastIndexOf('-');
+            int woNum = Utility.ConfirmIntOrZero(woNumber.Substring(index + 1));
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<DbParameter> parameterList = new List<DbParameter>();
+            parameterList.Add(baseDb.GetParameter("@PrimaryOfflineWoSeqNum", woNum, SqlDbType.Int));
+            parameterList.Add(baseDb.GetParameter("@UserId ", _mobileUserId, SqlDbType.Int));
+
+            baseDb.ExecuteNonQuery(spName, parameterList);
+        }
+
+        private bool ValidateAppWONumber(string woNumber, bool reAssignedUnAssigned)
+        {
+            if (reAssignedUnAssigned == false && woNumber.StartsWith("M") && woNumber.LastIndexOf('-') > 0 && char.IsDigit(woNumber[1]))
+                return true;
+
+            return false;
+        }
+
+        private string FormatDisplayDifferences(string name, int firstPad, Variance var, int secondPad)
+        {
+            string temp;
+            string firstValue = var.valB.ToString();
+            if (firstValue.Length > 15)
+                firstValue = firstValue.Substring(0, 14) + "...";
+            string secondValue = var.valA.ToString();
+            if (secondValue.Length > 15)
+                secondValue = secondValue.Substring(0, 14) + "...";
+
+            temp = ZeroPad(name, firstPad) + ZeroPad(firstValue, secondPad) + secondValue;
+
+            return temp;
+        }
+
+        private string FormatSetString(Variance var, string dbColName, int arrayNdx)
+        {
+            string setString = string.Empty;
+            if (dbColName == "[EquipNumber]" && arrayNdx == (int)_arrayList.WorkOrder) // one off
+            {
+                int equipmentID = GetEquipmentID(var.valA.ToString());
+                setString = $"  EquipID = {equipmentID},";
+            }
+            else if (dbColName == "[EmpNum]") // one off - "WoLaborLines", "WoMaterialLines", "WoActualTimeLines"
+            {
+                int employeeID = GetEmployeeID(var.valA.ToString());
+                setString = $"  EmpID = {employeeID},";
+            }
+            else if (dbColName == "[Code]" && arrayNdx == (int)_arrayList.WoMaterialLines)
+            {
+                int inventoryId = GetInventoryId(var.valA.ToString());
+                setString = $"  InvID = {inventoryId},{Environment.NewLine}  Code = '{var.valA.ToString()}',";
+            }
+            else if (dbColName.Contains("Date") || (dbColName == "DTAssignmentChanged" && arrayNdx == (int)_arrayList.WorkOrder))
+            {
+                if (string.IsNullOrEmpty(var.valA.ToString()))
+                    setString = $"  {dbColName} = null,";
+                else
+                {
+                    string temp = Utility.BuildUpdateDateString(var.valA.ToString());
+                    setString = $"  {dbColName} = {temp},";
+                }
+            }
+            else if (var.type == typeof(System.Boolean))
+            {
+                int tempVal = Utility.ConfirmBool(var.valA) ? 1 : 0;
+                setString = $"  {dbColName} = {tempVal},";
+            }
+            else if (var.type == typeof(System.String))
+            {
+                string val = var.valA.ToString().Replace("'", "''");
+                setString = $"  {dbColName} = '{val}',";
+            }
+            else
+                setString = $"  {dbColName} = {var.valA.ToString()},";
+
+            return setString;
+        }
+
+        private string ZeroPad(string data, int length)
+        {
+            StringBuilder sb = new StringBuilder(data, length);
+            while (sb.Length < length)
+                sb.Append(" ");
+
+            return sb.ToString();
+        }
+
+        private void FormatPropertyName(ref string fullName)
+        {
+            int firstNdx = fullName.IndexOf('<');
+            int secondNdx = fullName.IndexOf('>');
+            if (firstNdx >= 0 && secondNdx >= 0)
+                fullName = fullName.Substring(firstNdx + 1, secondNdx - firstNdx - 1);
+        }
+
+        private int GetPrimaryOfflineWoSeqNum()
+        {
+            int primaryOfflineWoSeqNum = 0;
+            string spName = "GetMobileUserData", functionName = "GetPrimaryOfflineWoSeqNum";
+            _logger.LogInformation($" *In {functionName} userId = {_mobileUserId}");
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<SqlParameter> parameterList = new List<SqlParameter>();
+            parameterList.Add(baseDb.GetParameter("@UserID", _mobileUserId, SqlDbType.Int));
+
+            primaryOfflineWoSeqNum = Utility.ConfirmIntOrZero(baseDb.ExecuteScalar(spName, parameterList));
+            _logger.LogInformation($" *In {functionName} primaryOfflineWoSeqNum = {primaryOfflineWoSeqNum}");
+
+            return primaryOfflineWoSeqNum;
+        }
+
+        private int GetWorkorderID(string woNumber)
+        {
+            int workorderId = 0;
+            string spName = "GetWorkorderId", functionName = "GetWorkorderId";
+            _logger.LogInformation($" *In {functionName} workorderNum = {woNumber}");
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<SqlParameter> parameterList = new List<SqlParameter>();
+            parameterList.Add(baseDb.GetParameter("@WO_Number", woNumber, SqlDbType.VarChar));
+
+            workorderId = Utility.ConfirmIntOrZero(baseDb.ExecuteScalar(spName, parameterList));
+            _logger.LogInformation($" *In {functionName} workorderId = {workorderId}");
+
+            return workorderId;
+        }
+
+        private int GetEmployeeID(string empNum)
+        {
+            int employeeId = 0;
+            string spName = "GetEmployeeID", functionName = "GetEmployeeID";
+            _logger.LogInformation($" *In {functionName} empNum = {empNum}");
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<SqlParameter> parameterList = new List<SqlParameter>();
+            parameterList.Add(baseDb.GetParameter("@EmpNum", empNum, SqlDbType.VarChar));
+
+            employeeId = Utility.ConfirmIntOrZero(baseDb.ExecuteScalar(spName, parameterList));
+
+            return employeeId;
+        }
+
+        private int GetEquipmentID(string equipNum)
+        {
+            int equipmentId = 0;
+            string spName = "GetEquipmentID", functionName = "GetEquipmentID";
+            _logger.LogInformation($" *In {functionName} equipNum = {equipNum}");
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<SqlParameter> parameterList = new List<SqlParameter>();
+            parameterList.Add(baseDb.GetParameter("@EquipNum", equipNum, SqlDbType.VarChar));
+
+            equipmentId = Utility.ConfirmIntOrZero(baseDb.ExecuteScalar(spName, parameterList));
+
+            return equipmentId; 
+        }
+
+        private int GetModifiedById(int mobDevUserId)
+        {
+            int mobDevUser = 0;
+            string spName = "GetMobDevUser", functionName = "GetModifiedById";
+            _logger.LogInformation($" *In {functionName} mobDevUserId = {mobDevUserId}");
+
+            BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+            List<SqlParameter> parameterList = new List<SqlParameter>();
+            parameterList.Add(baseDb.GetParameter("@MobDevUserID", mobDevUserId, SqlDbType.Int));
+
+            mobDevUser = Utility.ConfirmIntOrZero(baseDb.ExecuteScalar(spName, parameterList));
+
+            return mobDevUser;
+        }
+
+        private int GetInventoryId(string skuCode)
+        {
+            int inventoryId = 0;
+            string spName = "GetCatalogInventoryID", functionName = "GetInventoryId";
+            _logger.LogInformation($" *In {functionName} skuCode = {skuCode}");
+
+            if (!string.IsNullOrEmpty(skuCode))
+            {
+                BaseDataAccess baseDb = new BaseDataAccess(_connectionString);
+                List<DbParameter> parameterList = new List<DbParameter>();
+                parameterList.Add(baseDb.GetParameter("@Code", skuCode, SqlDbType.VarChar));
+                using (SqlDataReader dr = baseDb.GetDataReader(spName, parameterList))
+                {
+                    if (dr.Read())
+                    {
+                        inventoryId = Utility.ConfirmIntOrZero(dr["InventoryId"]);
+                    }
+                }
+            }
+
+            return inventoryId;
+        }
+    }
+
+    public class SyncCodeFailure
+    {
+        public int Code { get; set; }
+        public string Description { get; set; }
+    }
+    public class SyncCodeNew
+    {
+        public int Code { get; set; }
+        public int WorkorderId { get; set; }
+    }
+}
+

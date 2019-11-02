@@ -1,0 +1,82 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-button (click)="minimizeApp()">
+          <ion-icon slot="icon-only" name="remove-circle-outline"></ion-icon>
+      </ion-button>                 
+    </ion-buttons>
+    <ion-buttons slot="primary">
+      <ion-button *ngIf="!this.httpRequestsSvc.connected2Server"
+        (click)="connectionSvc.checkIfConnected2Server(true)">
+        <ion-icon  slot="icon-only" name="pulse" color="danger" ></ion-icon>
+      </ion-button>  
+      <ion-button (click)="checkCloseApp()">
+          <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class=title>G-Mobility App </ion-title>
+  </ion-toolbar>
+
+</ion-header>
+
+<ion-content fullscreen style="--background: url('../../../assets/images/weldingpic.png') ">
+  <ion-item color="primary">
+    <ion-title class=title>Device {{ connectionSvc.deviceHdwId }} </ion-title>
+  </ion-item>
+  <ion-item >
+    <ion-title class=title>GMOBILITY {{gmobVersion}} </ion-title>
+  </ion-item>
+  
+  <div style="margin: 15px">
+    <ion-button *ngIf="needSiteAccess" color="tertiary" shape="round" expand="full" 			
+      (click)="openSiteCodePage()">
+      <span> Click to Set Site Key </span> 
+      <ion-icon name="key"></ion-icon>
+    </ion-button>
+    <ion-button *ngIf="!needSiteAccess" 
+      color="tertiary" fill="outline" shape="block" class="register-button"       
+    (click)="openSiteCodePage()">
+    <span> {{ applicVarsSvc.siteAccessInfo.siteAbbrevName }} &nbsp; </span>
+    <ion-icon name="key"></ion-icon>
+  </ion-button>
+
+</div >
+<br> <br>
+<br> <br>
+<br> 
+<form [formGroup]="loginForm" (ngSubmit)="onloginClick()" padding>
+
+	<!-- loginName input -->
+  <ion-item *ngIf="!needSiteAccess" class="input-item">
+    <ion-label>
+      <ion-icon name="md-log-in"></ion-icon> Login
+    </ion-label>
+    <ion-input autocapitalize=letters formControlName="loginName" type="text"></ion-input>
+  </ion-item>
+
+	<!-- password input -->
+	<ion-item *ngIf="!needSiteAccess" class="input-item">
+		<ion-label>
+			<ion-icon name="md-lock"></ion-icon> Password
+		</ion-label>
+		<ion-input formControlName="password" type="password"></ion-input>
+	</ion-item>
+
+  <br>
+	<!-- submit button, is disabled when the form is not valid -->
+  <ion-button *ngIf="!needSiteAccess && !loggedIn && ready2Login" type="submit" 	expand="full" shape="round">
+    <ion-icon name="log-in"></ion-icon>
+        Login
+  </ion-button>
+
+</form>  
+
+<!-- LogOUT button, is disabled when the form is not valid -->
+  <ion-button *ngIf="!needSiteAccess && loggedIn"	expand="full" shape="round" color="danger"   		
+    (click)="onLogoutClick()">
+    <ion-icon name="log-out"></ion-icon>
+        Log Out
+  </ion-button>
+
+</ion-content>
+

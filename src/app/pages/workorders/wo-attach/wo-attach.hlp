@@ -1,0 +1,52 @@
+Overview:
+- the functionality is based upon two sets of data:
+1) the w/o attachments (if any)
+2) images selected by either camera or from photo-gallery 
+
+
+--- IMAGE FUNCTIONALITY ---
+LSO:
+key = "images" // IMAGES_STORAGE_KEY
+- stores file name, dir name & url-equiv of the file-pathname
+
+EVENT: Moving Image to WO-attachment
+- see description uner W/O ATTACHMENTS
+
+
+--- W/O ATTACHMENTS FUNCTIONALITY ---
+LSO:
+key = "attachments" // ATTACHMENTS_STORAGE_KEY
+- stores file name, dir name & url-equiv of the file-pathname as well as some wo-attachment-related info
+- create a new w/o attachment and insert into attachments-array
+
+EVENT: Page OnInit
+Phase I - create/load attachments-arr
+- attachments-arr retrieved from LSO(ATTACHMENTS_STORAGE_KEY)
+    - parse out attachments & otherAttachments from allAttachments
+
+- attachments-arr not found in LSO(ATTACHMENTS_STORAGE_KEY) or is empty
+    - for each wo-attachment:
+        - IF not-exists-in(attachments-arr) then add it 
+    - for each attachments-arr-obj:
+        - IF not-exists-in(wo-attachments) then delete it
+
+EVENT: Moving Image to WO-attachment (click=moveImage2WoAttachment(img))
+- copy image file from this.file.dataDirectory to this.file.externalRootDirectory
+- create and insert w/o attachment object into currWO.WoAttachFiles 
+- create and insert w/o attachment object into attachments-array
+- delete image object from images-array
+- save Workorder-array LSO: 'workorder'
+- save attachments-array LSO: ATTACHMENTS_STORAGE_KEY
+- save images-array LSO: IMAGES_STORAGE_KEY
+- if deviceOnLine -> create base64 image
+- if deviceOnLine -> send base64 image to server
+- if deviceOnLine -> semd workorder to server
+
+
+Notes:
+1. Android Device Storage:
+- file.externalDataDirectory --> file:///storage/emulator0/Android/data/io.ionic.starter/files/
+  - this is where the "gmobility"/<wo-num> directory is created to contain downloads
+
+- file:///storage/emulated/0/Android/data/io.ionic.starter/files/gmobility-<wonum>
+

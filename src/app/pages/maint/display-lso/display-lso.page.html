@@ -1,0 +1,219 @@
+<ion-header>
+  <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+      <ion-button  (click)="closePage()">
+          <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+      </ion-button>                 
+      </ion-buttons>
+      <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+    <ion-card color=subhead-bkgd>
+    <ion-grid>
+    <ion-row>
+        <ion-col col-10>
+        
+            <ion-select [(ngModel)]="selectTable" color=subhead-bkgd 
+            class="full-width-select">
+                <ion-select-option
+                *ngFor="let tbl of localStorageTables"
+                [value]="tbl">{{ tbl }}
+                </ion-select-option>
+            </ion-select>
+    
+        </ion-col>
+    </ion-row>
+    </ion-grid>
+        
+    <button ion-button block color=button-action>
+    </button>
+    
+    </ion-card>
+    <div *ngIf="selectTable=='Trades'">
+    <ion-list>
+        <ion-item *ngFor="let item of Trades">
+        {{ item.TradeId }} {{ item.TradeDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    
+    <div *ngIf="selectTable=='Locations'">
+    <ion-list>
+        <ion-item *ngFor="let item of Locations">
+        {{ item.LocationId }} {{ item.Name }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='Warehouses'">
+    <ion-list>
+        <ion-item *ngFor="let item of Warehouses">
+        {{ item.Warehouse }} 
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='Locations'">
+    <ion-list>
+        <ion-item *ngFor="let item of Locations">
+        {{ item.LocationId }} {{ item.Name }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='MeasureUnits'">
+    <ion-list>
+        <ion-item *ngFor="let item of MeasureUnits">
+        {{ item.UomCode }} 
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='MachineStates'">
+    <ion-list>
+        <ion-item *ngFor="let item of MachineStates">
+        {{ item.MachineStateId }} {{ item.MachineStateDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='CauseCodes'">
+    <ion-list>
+        <ion-item *ngFor="let item of CauseCodes">
+        {{ item.CauseCode }} {{ item.CauseDesc }} / {{ item.CauseLongDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='RepairCodes'">
+    <ion-list>
+        <ion-item *ngFor="let item of RepairCodes">
+        {{ item.RepairCode }} {{ item.RepairDesc }} / {{ item.RepairLongDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='SymptomCodes'">
+    <ion-list>
+        <ion-item *ngFor="let item of SymptomCodes">
+        {{ item.SymptomCode }} {{ item.SymptomDesc }} / {{ item.SymptomLongDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    
+    <div *ngIf="selectTable=='MasterTablesLog'">
+    <ion-list>
+        <ion-item *ngFor="let item of MasterTablesLog">
+        {{ item }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    
+    <div *ngIf="selectTable=='Catalog'">
+    <ion-list>
+        <ion-item *ngFor="let item of Catalog">
+        {{ item.skuCode }} {{ item.ItemDesc }} 
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='Employee'">
+        <ion-list>
+        <ion-item *ngFor="let item of Employees">
+            {{ item.EmpNumber }} {{ item.EmpName }} 
+        </ion-item> 
+        </ion-list>
+    </div>
+
+    <div *ngIf="selectTable=='SkuWarehouseBins'">
+        <ion-list>
+        <ion-item *ngFor="let item of SkuBins">
+            {{ item.SkuCode }} {{ item.Warehouse }} {{ item.BinNum }} 
+        </ion-item> 
+        </ion-list>
+    </div>
+
+
+    <div *ngIf="selectTable=='Equipment'">
+        <ion-list>
+        <ion-item *ngFor="let item of Equipment">
+            {{ item.EquipNum }} {{ item.ShortDesc }} 
+        </ion-item> 
+        </ion-list>
+    </div>
+
+
+    <div *ngIf="selectTable=='Supplier'">
+        <ion-list>
+        <ion-item *ngFor="let item of Suppliers">
+            {{ item.SupplierCode }} {{ item.SupplierName }} 
+        </ion-item> 
+        </ion-list>
+    </div>
+    
+    <div *ngIf="selectTable=='WoTypes'">
+            <ion-list>
+            <ion-item *ngFor="let item of WoTypes">
+                {{ item.WoTypeCode }} {{ item.WoTypeDesc }} 
+            </ion-item> 
+            </ion-list>
+    </div>
+
+    <div *ngIf="selectTable=='Departments'">
+    <ion-list>
+        <ion-item *ngFor="let item of Departments">
+        {{ item.DeptId }} {{ item.DeptName }}
+         <br> &nbsp; &nbsp;{{ item.WoTypePrefix }} {{ item.PriorityCode }}
+        </ion-item> 
+    </ion-list>
+    </div>
+
+    <div *ngIf="selectTable=='WoSecurity'">
+        <ion-list>
+            <ion-item *ngFor="let item of WoSecurity">
+            {{ item.UserSecId }} {{ item.PolicyName }} {{ item.WoTypeCode }}
+            </ion-item> 
+        </ion-list>
+        </div>
+
+    <div *ngIf="selectTable=='WorkRequestTypes'">
+    <ion-list>
+        <ion-item *ngFor="let item of WorkRequestTypes">
+        {{ item.WorkReqTypeId }} {{ item.WorkReqTypeDesc }}
+        </ion-item> 
+    </ion-list>
+    </div>
+    
+        
+    <div *ngIf="selectTable=='workorders'">
+        <ion-list>
+            <ion-item *ngFor="let item of Workorders">
+            {{ item.WoNumber }} {{ item.WoDesc }} <br>
+            &nbsp; &nbsp;  {{ item.WoInstructions }}
+            </ion-item> 
+        </ion-list>
+    </div>
+
+    
+    <div *ngIf="selectTable=='LsoTables'">
+        <ion-list>
+        <ion-item *ngFor="let item of LsoTables">
+            {{ item }}
+        </ion-item> 
+        </ion-list>
+    </div>
+
+    <div *ngIf="selectTable=='Attachments'"        
+        text-wrap> {{displayAttachments}}
+    </div>
+    <div *ngIf="selectTable=='Images'"        
+        text-wrap> {{displayImages}}
+    </div>
+
+
+</ion-content>

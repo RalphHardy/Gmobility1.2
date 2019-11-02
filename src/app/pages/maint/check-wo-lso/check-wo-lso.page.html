@@ -1,0 +1,182 @@
+<ion-header>
+    <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+        <ion-button  (click)="closePage()">
+            <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+        </ion-button>                 
+        </ion-buttons>
+        <ion-title class=title>{{ PageTitle }}</ion-title>
+    </ion-toolbar>
+  </ion-header>
+  
+  <ion-content>
+  
+      <form [formGroup]="pageFormGroup" (ngSubmit)="presentAlert()">    
+          <ion-item>
+              <ion-col size="8">                
+                  <ion-label ><b>Fix Duplicate M/L Id(s):</b></ion-label>
+              </ion-col>
+              <ion-col size="4">
+                  <ion-checkbox        
+                      formControlName="fixDupMLIs">
+                  </ion-checkbox>
+              </ion-col>
+          </ion-item>  
+          <ion-item>
+              <ion-col size="8">                
+                  <ion-label ><b>Fix Missing MobDevUserId(s):</b></ion-label>
+              </ion-col>
+              <ion-col size="4">
+                  <ion-checkbox        
+                      formControlName="fixMissingDevUserIds">
+                  </ion-checkbox>
+              </ion-col>
+          </ion-item>  
+      
+          <div>
+              <hr>
+              <ion-grid>
+                  <ion-row>
+                  <ion-col align-self-start>              
+                      <ion-button start color="danger" shape="round" expand="full"
+                      *ngIf="formHasChanged"
+                      (click)="closePage()">
+                      Cancel
+                      </ion-button>
+                  </ion-col>
+                  <ion-col align-self-end>            
+                      <ion-button end color="success"  shape="round" expand="full"
+                      type="submit"
+                      [disabled]="!pageFormGroup.valid">
+                        Execute
+                      </ion-button>
+                  </ion-col>
+                  </ion-row>
+              </ion-grid>
+          </div>
+          <div class="desc-style"> </div> 
+          <ion-toolbar color="primary">
+            <ion-title class="title">Check/Fix Results</ion-title>      
+          </ion-toolbar>  
+                
+          <div>
+              <ion-item>
+                  <ion-textarea class="desc-style" type="text"
+                  formControlName="dupCheckText" rows="4">
+                  </ion-textarea>
+      
+              </ion-item>
+              <ion-item>
+                  <ion-textarea class="desc-style" type="text"
+                  formControlName="missingDevUserIdText" rows="3">
+                  </ion-textarea>
+      
+              </ion-item>
+              <br>
+              
+          </div>
+      </form>
+    <br>
+    <ion-toolbar color="primary">
+      <ion-title class="title">Information on Work Orders ({{workorderList.length}})</ion-title>      
+    </ion-toolbar>  
+          
+
+    <ion-list *ngFor="let WO of workorderList; let woIdx = index" >  
+      <div> <!-- For each WO-->
+        ({{woIdx}}) <b>WO#</b> {{ WO.WoNumber | uppercase }} [{{WO.MobDevUserId}}]
+        <span *ngIf="WO.DirtyFlag" class="warning-msg">** Needs Sync **</span>
+        <div class="desc-div">
+            Labor Lines ({{WO.WoLaborLines.length}})
+        </div>  
+
+        <ion-list *ngFor="let labor of WO.WoLaborLines">
+         
+         <ion-grid fixed> <!-- Labor Lines -->
+           
+          <ion-row class="data-div">              
+            <ion-col size="4">
+              <b>MobLine:</b> {{ labor.MobLineId }}
+            </ion-col>
+            <ion-col  size="8">
+              {{ labor.Description }}
+            </ion-col>
+          </ion-row>
+          <ion-row *ngIf="labor.WoActualTimeLines.length>0"> <!-- Time Cards -->
+            <ion-item>
+              
+            <ion-grid fixed>
+              <ion-row>                
+                <div class="desc-div">
+                    Time Cards ({{labor.WoActualTimeLines.length}})
+                </div>  <!-- for each Time Card-->
+              </ion-row>
+              <ion-row>
+                <ion-list *ngFor="let tc of labor.WoActualTimeLines">
+                  <ion-row> <!-- each Time Card -->                      
+                    <ion-col size="7">
+                      M/L: {{ tc.MobLineId }}
+                    </ion-col>
+                    <ion-col size="5">
+                        Hrs: {{ tc.Hours}}
+                    </ion-col>
+                  </ion-row> <!-- each Time Card --> 
+                </ion-list>  <!-- Time Cards --> 
+              </ion-row>  <!-- Time Cards --> 
+            </ion-grid> 
+          </ion-item>
+          </ion-row>  <!-- Labor Line --> 
+        </ion-grid>
+      </ion-list>  <!-- Labor Lines --> 
+
+
+      <div class="desc-div">
+          Material Lines ({{WO.WoMaterialLines.length}})
+      </div>  
+
+      <ion-list *ngFor="let mtl of WO.WoMaterialLines">
+       
+       <ion-grid fixed> <!-- Labor Lines -->
+         
+        <ion-row class="data-div">              
+          <ion-col size="4">
+            <b>MobLine:</b> {{ mtl.MobLineId }}
+          </ion-col>
+          <ion-col  size="8">
+            {{ mtl.SkuCode }}
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-list>
+
+
+    <div class="desc-div" *ngIf="WO.WoAttachFiles.length > 0">
+        Attachments ({{WO.WoAttachFiles.length}})
+    </div>  
+
+    <ion-list *ngFor="let att of WO.WoAttachFiles">
+     
+     <ion-grid fixed> <!-- Labor Lines -->
+       
+      <ion-row class="data-div">              
+        <ion-col size="4">
+          <b>MobLine:</b> {{ att.MobLineId }}
+        </ion-col>
+        <ion-col  size="8">
+          {{ att.FileName }}
+        </ion-col>
+      </ion-row>
+      <ion-row class="data-div">  
+        <ion-col size="4"></ion-col>
+        <ion-col size="8">
+          Transf'd to Server: {{att.TransferToEnt}}
+        </ion-col>  
+      </ion-row>
+    </ion-grid>
+  </ion-list>
+
+      </div> <!-- For each WO--> 
+    </ion-list> <!-- Work orders -->
+
+  </ion-content>
+  

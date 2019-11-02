@@ -1,0 +1,217 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+        <ion-back-button></ion-back-button>            
+    </ion-buttons>
+    <ion-buttons slot="primary"
+      *ngIf="changeAllowed">
+      <ion-button (click)="selectMenuItem()">
+        <ion-icon  slot="icon-only" name="menu"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  <ion-title class=title>{{ PageTitle }}</ion-title>
+</ion-toolbar>
+
+</ion-header>
+
+<ion-content>
+  <ion-item class="desc-style">
+      {{ currWO.WoDesc}}
+  </ion-item>
+  <ion-list>
+    <ion-item      
+        (click)="onEditWo(currWO.WoNumber)"> <!-- WO Edit-->
+      <ion-grid fixed>
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+          Eqp/Asset:
+          </ion-col>
+          <ion-col class="val-lbl" size="8">
+              {{ currWO.EquipNumber }}
+          </ion-col> 
+        </ion-row>       
+        <ion-row>
+            <ion-col class="desc-style">{{ currWO.EquipDesc }}</ion-col>
+        </ion-row>
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+              Mach State:
+          </ion-col>
+          <ion-col class="val-lbl" size="8">
+            {{ currWO.MachineStateDesc }}
+          </ion-col>
+        </ion-row>    
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+              Status:
+          </ion-col>
+          <ion-col class="val-lbl" size="4">
+              {{ currWO.WoMobStatusDesc }}
+          </ion-col>
+          <ion-col size="4">
+              <b>Prty:</b> 
+              {{ currWO.PriorityId }}
+          </ion-col>
+        </ion-row>    
+      </ion-grid>
+    </ion-item>
+  </ion-list>  
+    <!--end header section-->
+  
+    <!--###############################################################################-->
+    <!--LABOR section-->
+    <!--###############################################################################-->   
+    
+  <ion-toolbar color="primary" (click)="onAddEditLaborLine(0)">
+    <ion-buttons slot="primary"
+      *ngIf="changeAllowed">
+      <ion-button 
+      (click)="onAddEditLaborLine(0)">
+        <ion-icon slot="icon-only" name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class="title">Labor Lines</ion-title>      
+  </ion-toolbar>  
+        
+  <ion-list *ngFor="let labor of currWO.WoLaborLines">
+    <ion-item  (click)="onAddEditLaborLine(labor.MobLineId)"> <!-- Labor Lines -->
+      <ion-grid fixed>
+        <ion-row>
+          <ion-col size="3">
+            <b>Line:</b> {{ labor.MobLineId }}
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ labor.Description }}
+          </ion-col>
+        </ion-row>    
+        <ion-row>
+          <ion-col class="fld-lbl" size="3">
+              Trade:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+              {{labor.TradeDesc}}
+          </ion-col>
+        </ion-row>    
+        <ion-row>
+          <ion-col class="fld-lbl" size="3">
+              Hours:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+              {{labor.AccumTime}} (worked to date)
+          </ion-col>
+        </ion-row>  
+      </ion-grid>
+    </ion-item>
+
+      
+    <ion-card (click)="onClickTimecards(labor.MobLineId)">
+      
+    <ion-list *ngIf="labor.WoActualTimeLines.length > 0">
+        <div color="primary"  *ngIf="labor.WoActualTimeLines.length > 1">
+          Time Cards
+        </div>
+        <div color="primary"  *ngIf="labor.WoActualTimeLines.length == 1">
+          Time Card
+        </div>
+      <ion-item *ngFor="let timecard of labor.WoActualTimeLines">        
+      
+      <ion-grid fixed >
+        <ion-row class="white-bkgd">
+          <ion-col class="fld-lbl" size="3">
+            Hrs: {{ timecard.Hours }} 
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ timecard.EmpName }}
+          </ion-col>
+        </ion-row>    
+        <ion-row class="white-bkgd">
+          <ion-col class="fld-lbl" size="3">
+            Date: 
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ utilitiesSvc.getSmallDateFromDTstr(timecard.WorkDate) }}
+          </ion-col>
+        </ion-row> 
+      </ion-grid> 
+    </ion-item>
+      </ion-list>
+      </ion-card>
+      <!-- Now display any TimeCards -->
+      
+  </ion-list>
+  
+  <!--end labor section-->
+  <!--###############################################################################-->
+  <!--material section-->
+  <!--###############################################################################-->
+
+  <ion-toolbar color="primary" (click)="onAddEditMaterialLine(0)">
+    <ion-buttons slot="primary"
+      *ngIf="changeAllowed">
+      <ion-button 
+      (click)="onAddEditMaterialLine(0)">
+        <ion-icon slot="icon-only" name="add"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title class="title">Material Lines</ion-title>      
+  </ion-toolbar>          
+  
+  <ion-list *ngFor="let material of currWO.WoMaterialLines">
+    <ion-item  (click)="onAddEditMaterialLine(material.MobLineId)"> <!--Materials-->
+      <ion-grid fixed>
+        <ion-row>
+          <ion-col class="fld-lbl" size="4">
+              Cat.Item:
+          </ion-col>
+          <ion-col class="val-lbl" size="8">
+              {{ material.SkuCode }}
+          </ion-col>
+        </ion-row>         
+        <ion-row>
+            <ion-col class="desc-style">{{ material.SkuDescription }}</ion-col>
+        </ion-row> 
+        <ion-row>
+          <ion-col class="fld-lbl" size="3">
+              Planned:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ material.EstQty }}
+          </ion-col>
+        </ion-row>   
+        <ion-row>
+          <ion-col class="fld-lbl" size="3">
+              Used:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+            {{ material.QtyUsed }}
+          </ion-col>
+        </ion-row>     
+        <ion-row *ngIf="material.Warehouse == ''">
+          <ion-col class="fld-lbl" size="3">
+            Whse:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+              {{ material.Warehouse }}
+          </ion-col>
+        </ion-row>    
+        <ion-row *ngIf="material.Bin == ''">
+          <ion-col class="fld-lbl" size="3">
+            Bin:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+              {{ material.Bin }}
+          </ion-col>
+        </ion-row>  
+        <ion-row *ngIf="material.StagingLocation == ''">
+          <ion-col class="fld-lbl" size="3">
+            Staged:
+          </ion-col>
+          <ion-col class="val-lbl" size="9">
+              {{ material.StagingLocation }}
+          </ion-col>
+        </ion-row>      
+      </ion-grid>
+    </ion-item>
+  </ion-list>   
+
+</ion-content>

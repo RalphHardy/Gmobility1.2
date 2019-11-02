@@ -1,0 +1,62 @@
+<ion-header>
+    <ion-toolbar color="primary">
+        <ion-buttons slot="start">
+        <ion-button  (click)="goBack()">
+            <ion-icon slot="icon-only" name="arrow-back"></ion-icon>        
+        </ion-button>                 
+        </ion-buttons>
+        <ion-buttons slot="primary">
+        <ion-button (click)="onAccept()">
+            <ion-icon slot="icon-only" name="checkmark"></ion-icon>
+        </ion-button>
+        </ion-buttons>
+        <ion-title class=title>{{ PageTitle }}</ion-title>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content>
+        <form #f="ngForm" (ngSubmit)="loadItems(f)">
+          <ion-list>
+            <ion-item>
+              <ion-label fixed>Item Code:</ion-label>
+              <ion-input
+                type="text"
+                name="skuCode"                
+                placeholder="Enter search string"
+                ngModel>
+              </ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-label fixed>Item Desc:</ion-label>
+              <ion-input
+                type="text"
+                name="skuDesc"
+                placeholder="Enter search string"
+                ngModel>
+              </ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-label fixed>Item Class:</ion-label>
+              <ion-input
+                type="text"
+                name="skuClass"
+                placeholder="Enter search string"
+                ngModel
+                ></ion-input>
+            </ion-item>
+          </ion-list>
+          <ion-button ion-button expand="full" color="warning"
+            type="submit"        
+            [disabled]="f.value.skuCode == '' && f.value.skuDesc == '' && f.value.skuClass == ''">
+            Search &nbsp; &nbsp; ({{ searchResult.length }})
+          </ion-button>
+        </form>
+        <ion-list>
+          <ion-item 
+            *ngFor="let item of searchResult; let i = index" (click)="onClickItem(f, i)">
+            <span>{{ item.SkuCode }} &nbsp; <i>{{ item.ItemDesc }}</i></span>
+               
+          </ion-item>
+        </ion-list>
+
+</ion-content>

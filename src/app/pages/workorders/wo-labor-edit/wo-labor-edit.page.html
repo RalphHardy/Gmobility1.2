@@ -1,0 +1,132 @@
+<ion-header>
+    <ion-toolbar color="primary">
+      <ion-buttons slot="start">
+          <ion-back-button></ion-back-button>            
+      </ion-buttons>
+      <ion-buttons slot="primary"
+        *ngIf="changeAllowed && !formHasChanged">
+        <ion-button (click)="selectMenuItem()">
+          <ion-icon  slot="icon-only" name="menu"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    <ion-title class=title>{{ PageTitle }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form [formGroup]="pageFormGroup" (ngSubmit)="onSubmit()">
+      
+    <ion-textarea textarea id="article_text" class="main-desc" type="text" 
+      placeholder="ENTER DESCRIPTION OF WORK HERE"
+      formControlName="laborDesc" rows="2">
+    </ion-textarea>
+
+    <!-- Input TRADE CODES-->
+    <ion-item>
+        <ion-label position="fixed" ><b>Trade</b></ion-label>
+        <ion-select formControlName="tradeDesc">
+        <ion-select-option
+            *ngFor="let trade of tradeCodes"
+            [value]="trade">
+            {{trade}}
+        </ion-select-option>
+        </ion-select>
+    </ion-item>
+
+    <!-- Input EMPLOYEE-->
+    <ion-button expand="full" color="warning" 
+    *ngIf="changeAllowed"
+    (click)="onSelectEmployee()">
+    Press to Select Employee
+    </ion-button>
+    <ion-item>
+        <ion-label stacked><b>Emp #</b></ion-label>
+        <ion-input
+            (ionChange)="setUpperCase('empNum')" 
+            type="text"
+            formControlName="empNum"></ion-input>
+    </ion-item>
+    <ion-item class="desc-style">
+      {{ addEditLL.EmpName }}
+    </ion-item> 
+ 
+   
+    <!-- Input DATE STARTED -->
+    <ion-item>
+      <ion-label fixed><b>Date Started:</b> </ion-label>
+      <ion-datetime  formControlName="dateStarted"
+        display-format="DD-MMM-YYYY" >
+      </ion-datetime>
+    </ion-item>  
+    <ion-item *ngIf="!isEdit">
+      <ion-label position="fixed" ><b>Hours Worked:</b></ion-label>
+      <ion-input
+          type="number"
+          inputmode="numeric"
+          formControlName="hoursWorked"></ion-input>
+    </ion-item>
+    <ion-button *ngIf="pageFormGroup.value.hoursWorked!=''"
+      ion-button expand="full" color="warning"
+      (click)="onClearHrsWorked()">
+      Clear Hours Worked
+    </ion-button>
+    <ion-item *ngIf="!isEdit && pageFormGroup.value.hoursWorked > 0">
+      <ion-label position="fixed" ><b>Create T/C:</b></ion-label>
+      <ion-checkbox      
+          formControlName="createTC"></ion-checkbox>
+    </ion-item>
+    <div><hr></div>
+
+    <!-- Input DATE COMPLETED -->   
+    <ion-item>
+      <ion-label fixed><b> Last Worked:</b> </ion-label>
+      <ion-datetime  
+        formControlName="dateCompleted"
+        display-format="DD-MMM-YYYY" >
+      </ion-datetime>
+    </ion-item>
+    
+    <ion-button *ngIf="pageFormGroup.value.dateCompleted && changeAllowed"
+      ion-button expand="full" color="warning"
+      (click)="onClearCompletedDate()">
+      Clear Completed Date
+    </ion-button>      
+    <ion-button *ngIf="!pageFormGroup.value.dateCompleted && changeAllowed"
+      ion-button expand="full" color="warning"
+      (click)="setCompletedDate()">
+      Set to Today's Date
+    </ion-button>      
+
+    <div>
+      <hr>
+      <ion-grid>
+        <ion-row>
+          <ion-col align-self-start>              
+            <ion-button start color="danger" shape="round" expand="full"
+            *ngIf="formHasChanged"
+            (click)="closePage()">
+              Cancel
+            </ion-button>
+          </ion-col>
+          <ion-col align-self-end>            
+            <ion-button end color="success"  shape="round" expand="full"
+            *ngIf="formHasChanged"
+            type="submit"
+            [disabled]="!pageFormGroup.valid">
+              {{ submitBtnLabel }}
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </div>
+  </form>
+  
+  <div>
+    <hr>
+    <ion-button  *ngIf="isEdit && changeAllowed && addEditLL.EmpName!==''" ion-button expand="full" color="warning"
+      (click)="onClickTimecards(addEditLL.MobLineId)">
+      ({{currWO.WoLaborLines[this.idxLL].WoActualTimeLines.length}}) Time Cards ({{currWO.WoLaborLines[this.idxLL].AccumTime}} hrs)
+    </ion-button>
+  </div>
+
+</ion-content>
